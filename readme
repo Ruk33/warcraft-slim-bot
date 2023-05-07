@@ -1,0 +1,11 @@
+warcraft-slim-bot
+	this is a very basic bot for hosting games in servers using pvpgn.
+	it only support linux.
+
+build
+	run bash ./build.sh
+
+how to use?
+	run build/warcraft-slim-bot
+	the bot will try to connect to the server locally (127.0.0.1)
+	this bot is intended to run on the same machine as the server.

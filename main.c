@@ -69,31 +69,34 @@ int main(void)
     unsigned char start = 1;
     send(client_fd, &start, sizeof(start), 0);
     
+    // packets.
+    struct packet to_client = {0};
+    struct packet from_client = {0};
+    
     // send init packet.
-    struct packet init = {0};
-    packet_server_init(&init);
-    if (send(client_fd, init.buf, init.size, 0) != init.size) {
-        printf("failed to send inital 1.\n");
+    to_client.size = 0;
+    packet_server_init(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send init packet.\n");
         goto exit;
     }
     printf("packet was sent. waiting for response.\n");
     
     // start of checking if "keys" are valid.
-    struct packet response = {0};
-    response.size = (int) recv(client_fd, response.buf, sizeof(response.buf), 0);
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
     printf("packets were read!\n");
     // printf("first byte is correct? %d\n", response.buf[0] == bnet_header);
-    printf("packet type is %d\n", (int)response.buf[1]);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
     
     unsigned char sid_auth_check = 81;
-    if (response.buf[1] != sid_auth_check) {
-        printf("expecting %d but got %d", sid_auth_check, response.buf[1]);
+    if (from_client.buf[1] != sid_auth_check) {
+        printf("expecting %d but got %d", sid_auth_check, from_client.buf[1]);
         goto exit;
     }
     
     printf("checking if the keys are valid.\n");
     int key_state = 0;
-    memcpy(&key_state, response.buf + 4, sizeof(key_state));
+    memcpy(&key_state, from_client.buf + 4, sizeof(key_state));
     printf("key_state is %d.\n", key_state);
     if (key_state != 0) {
         printf("key state failed.\n");
@@ -101,44 +104,85 @@ int main(void)
     }
     
     // send account logon.
-    struct packet account_logon = {0};
-    packet_server_account_logon(&account_logon);
-    if (send(client_fd, account_logon.buf, account_logon.size, 0) != account_logon.size) {
+    to_client.size = 0;
+    packet_server_account_logon(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
         printf("failed to send account logon.\n");
         goto exit;
     }
     
     printf("account logon sent!\n");
-    response.size = (int) recv(client_fd, response.buf, sizeof(response.buf), 0);
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
     // printf("packet is correct %d\n", (int)response.buf[0] == bnet_header);
-    printf("packet type is %d\n", (int)response.buf[1]);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
     
     // check if username was accepted.
-    if (response.buf[1] != 83) {
+    if (from_client.buf[1] != 83) {
         printf("expected 83.\n");
         goto exit;
     }
     
     struct server_salt salt = {0};
     struct server_public_key public_key = {0};
-    memcpy(salt.buf, response.buf + 8, sizeof(salt.buf));
-    memcpy(public_key.buf, response.buf + 40, sizeof(public_key.buf));
+    memcpy(salt.buf, from_client.buf + 8, sizeof(salt.buf));
+    memcpy(public_key.buf, from_client.buf + 40, sizeof(public_key.buf));
     
-    struct packet login_proof = {0};
-    packet_server_account_login_proof(&login_proof);
-    if (send(client_fd, login_proof.buf, login_proof.size, 0) != login_proof.size) {
+    to_client.size = 0;
+    packet_server_account_login_proof(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
         printf("failed to send account login proof.\n");
         goto exit;
     }
     
-    response.size = (int) recv(client_fd, response.buf, sizeof(response.buf), 0);
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
     // printf("packet is correct %d\n", (int)response.buf[0] == bnet_header);
     printf("checking if password was accepted.\n");
-    printf("packet type is %d\n", (int)response.buf[1]);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
     
     int password_status = 0;
-    memcpy(&password_status, response.buf + 4, sizeof(password_status));
-    printf("pass ok? %s\n", password_status == 0 || password_status == 0xE ? "yes" : "no");
+    memcpy(&password_status, from_client.buf + 4, sizeof(password_status));
+    
+    int password_ok = password_status == 0 || password_status == 0xE;
+    printf("pass ok? %s\n", password_ok ? "yes" : "no");
+    
+    if (!password_ok) {
+        printf("password invalid.\n");
+        goto exit;
+    }
+    
+    to_client.size = 0;
+    packet_server_net_game_port(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send net game port.\n");
+        goto exit;
+    }
+    
+    to_client.size = 0;
+    packet_server_enter_chat(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send enter chat.\n");
+        goto exit;
+    }
+    
+    to_client.size = 0;
+    packet_server_friend_list(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send friend list.\n");
+        goto exit;
+    }
+    
+    to_client.size = 0;
+    packet_server_clan_member_list(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send clan member list.\n");
+        goto exit;
+    }
+    
+    printf("all was sent.\n");
+    
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
+    // printf("packet is correct %d\n", (int)response.buf[0] == bnet_header);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
     
     exit:
     close(client_fd);
