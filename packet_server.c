@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h> // strnlen
 #include "include/packet.h"
 #include "include/packet_server.h"
 #include "include/bsha1.h"
@@ -51,32 +52,30 @@ void packet_server_init(struct packet *dest)
     packet_write_size(dest);
 }
 
-void packet_server_account_logon(struct packet *dest)
+void packet_server_account_logon(struct packet *dest, struct username *username)
 {
     assert(dest);
     
     unsigned char sid_auth_account_logon = 83;
     packet_write_header(dest, sid_auth_account_logon);
     
-    char public_key[32] = {32, 0};
+    char public_key[32] = {32, 0}; // todo: complete!
     packet_write_array(dest, public_key);
     
-    char username[] = "your-username.";
-    packet_write_array(dest, username);
+    packet_write_array(dest, username->buf);
     
     packet_write_size(dest);
 }
 
-void packet_server_account_login_proof(struct packet *dest)
+void packet_server_account_login_proof(struct packet *dest, struct bsha1_password *password)
 {
     assert(dest);
     
     unsigned char sid_auth_account_login_proof = 84;
     packet_write_header(dest, sid_auth_account_login_proof);
     
-    struct bsha1_password password = {"your-password."};
     struct bsha1_password hashed_password = {0};
-    bsha1_hash_password(&hashed_password, &password);
+    bsha1_hash_password(&hashed_password, password);
     
     assert(sizeof(hashed_password.buf) >= 20);
     packet_write(dest, (unsigned char *) hashed_password.buf, 20);
@@ -121,5 +120,28 @@ void packet_server_clan_member_list(struct packet *dest)
     packet_write_header(dest, clan_member_list);
     int empty = 0;
     packet_write_ex(dest, empty);
+    packet_write_size(dest);
+}
+
+void packet_server_join_channel(struct packet *dest, struct channel_name *channel)
+{
+    assert(dest);
+    assert(channel);
+    
+    unsigned char packet_type = 12;
+    packet_write_header(dest, packet_type);
+    
+    int channel_len = (int) strnlen(channel->buf, sizeof(channel->buf));
+    if (channel_len > 0) {
+        unsigned char no_create_join[] = {2, 0, 0, 0};
+        packet_write_array(dest, no_create_join);
+    } else {
+        unsigned char first_join[] = {1, 0, 0, 0};
+        packet_write_array(dest, first_join);
+    }
+    if (channel_len) {
+        // +1 null terminator.
+        packet_write(dest, (unsigned char *) channel->buf, channel_len + 1);
+    }
     packet_write_size(dest);
 }

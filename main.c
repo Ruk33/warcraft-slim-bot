@@ -10,6 +10,7 @@
 
 #include "include/packet.h"
 #include "include/packet_server.h"
+#include "include/bsha1.h"
 
 struct server_name {
     char buf[256];
@@ -23,14 +24,6 @@ struct cd_key_tft {
     char buf[32]; // seems like the size is 26
 };
 
-struct username {
-    char buf[64];
-};
-
-struct password {
-    char buf[32]; // 20 is max.
-};
-
 struct server_salt {
     unsigned char buf[32];
 };
@@ -39,10 +32,16 @@ struct server_public_key {
     unsigned char buf[32];
 };
 
-int main(void)
+int main(int argc, char **argv)
 {
 #define port 6112
 #define server_address "127.0.0.1"
+    
+    if (argc != 3) {
+        printf("%s <username> <password>\n", argv[0]);
+        printf("example: %s my-bot-username my-bot-password\n", argv[0]);
+        return 0;
+    }
     
     struct sockaddr_in address = {0};
     address.sin_family = AF_INET;
@@ -72,6 +71,12 @@ int main(void)
     // packets.
     struct packet to_client = {0};
     struct packet from_client = {0};
+    
+    // auth.
+    struct username username = {0};
+    struct bsha1_password password = {0};
+    strncpy(username.buf, argv[1], sizeof(username.buf) - 1);
+    strncpy(password.buf, argv[2], sizeof(password.buf) - 1);
     
     // send init packet.
     to_client.size = 0;
@@ -105,7 +110,7 @@ int main(void)
     
     // send account logon.
     to_client.size = 0;
-    packet_server_account_logon(&to_client);
+    packet_server_account_logon(&to_client, &username);
     if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
         printf("failed to send account logon.\n");
         goto exit;
@@ -128,7 +133,7 @@ int main(void)
     memcpy(public_key.buf, from_client.buf + 40, sizeof(public_key.buf));
     
     to_client.size = 0;
-    packet_server_account_login_proof(&to_client);
+    packet_server_account_login_proof(&to_client, &password);
     if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
         printf("failed to send account login proof.\n");
         goto exit;
@@ -183,6 +188,27 @@ int main(void)
     from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
     // printf("packet is correct %d\n", (int)response.buf[0] == bnet_header);
     printf("packet type is %d\n", (int)from_client.buf[1]);
+    
+    // enter chat response.
+    if (from_client.buf[1] != 10) {
+        printf("expected 10.\n");
+        goto exit;
+    }
+    
+    struct channel_name channel_name = {0};
+    strncpy(channel_name.buf, (char *) (from_client.buf + 4), sizeof(channel_name.buf) - 1);
+    
+    printf("channel: %s.\n", channel_name.buf);
+    
+    struct channel_name channel_to_join = {"Warcraft 3 Frozen Throne"};
+    to_client.size = 0;
+    packet_server_join_channel(&to_client, &channel_to_join);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send join channel.\n");
+        goto exit;
+    }
+    
+    sleep(30);
     
     exit:
     close(client_fd);

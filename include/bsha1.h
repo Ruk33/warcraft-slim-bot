@@ -1,3 +1,8 @@
+// todo: move struct to it's proper place.
+struct username {
+    char buf[32];
+};
+
 struct bsha1_password {
     char buf[32]; // max 20.
 };
