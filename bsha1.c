@@ -48,7 +48,7 @@ void bsha1_hash_password(struct bsha1_password *dest, struct bsha1_password *src
     
     int i = 0;
     unsigned int a, b, c, d, e, g = 0;
-	unsigned int* ldata = 0;
+    unsigned int* ldata = 0;
     char data[1024] = {0};
     memcpy(data, input, length);
     ldata = (unsigned int *) data;
