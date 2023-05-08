@@ -66,51 +66,91 @@ void bsha1_hash_password(struct bsha1_password *dest, struct bsha1_password *src
     g = 0;
     
     // Loops unrolled.
-    BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        BSHA_OP1(a, b, c, d, e, *ldata++, g) BSHA_OP1(a, b, c, d, e, *ldata++, g)
-        
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        BSHA_OP2(a, b, c, d, e, *ldata++, g) BSHA_OP2(a, b, c, d, e, *ldata++, g)
-        
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        BSHA_OP3(a, b, c, d, e, *ldata++, g) BSHA_OP3(a, b, c, d, e, *ldata++, g)
-        
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        BSHA_OP4(a, b, c, d, e, *ldata++, g) BSHA_OP4(a, b, c, d, e, *ldata++, g)
-        
-        ldata = (unsigned int *) result;
+    BSHA_OP1(a, b, c, d, e, *ldata++, g); 
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    BSHA_OP1(a, b, c, d, e, *ldata++, g);
+    
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    BSHA_OP2(a, b, c, d, e, *ldata++, g);
+    
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    BSHA_OP3(a, b, c, d, e, *ldata++, g);
+    
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    BSHA_OP4(a, b, c, d, e, *ldata++, g);
+    
+    ldata = (unsigned int *) result;
     ldata[0] = LSB4(BSHA_IC1 + a);
     ldata[1] = LSB4(BSHA_IC2 + b);
     ldata[2] = LSB4(BSHA_IC3 + c);
