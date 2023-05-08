@@ -5,6 +5,7 @@ enum game_state {
 };
 
 enum game_map_type {
+    game_map_type_unknown = 1,
     game_map_type_melee = 1 << 5,
     // todo: complete...
 };

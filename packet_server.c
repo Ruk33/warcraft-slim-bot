@@ -21,13 +21,13 @@ static void packet_write_header(struct packet *dest, unsigned char packet_type)
 void packet_server_init(struct packet *dest)
 {
     assert(dest);
-    unsigned char sid_auth_info = 81;
+    unsigned char sid_auth_info = 80; // was 81.
     packet_write_header(dest, sid_auth_info);
     
     unsigned char protocol_id[] = {0, 0, 0, 0};
     unsigned char platform_id[] = {54, 56, 88, 73}; // "IX86"
     unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
-    unsigned char version_id[] = {0, 0, 0, 0};
+    unsigned char version_id[] = {29, 0, 0, 0};
     unsigned char language[] = {83, 85, 110, 101}; // "enUS"
     unsigned char local_ip[] = {127, 0, 0, 1};
     unsigned char time_zone_bias[] = {60, 0, 0, 0}; // 60 minutes (GMT +0100) but this is probably -0100
@@ -50,6 +50,15 @@ void packet_server_init(struct packet *dest)
     char country[] = "Germany";
     packet_write_array(dest, country);
     
+    packet_write_size(dest);
+}
+
+void packet_server_ping(struct packet *dest, int ping)
+{
+    assert(dest);
+    unsigned char packet_type = 37;
+    packet_write_header(dest, packet_type);
+    packet_write_ex(dest, ping);
     packet_write_size(dest);
 }
 
@@ -161,7 +170,7 @@ void packet_server_start_adv_ex3(struct packet *dest)
     int up_time = 0;
     packet_write_ex(dest, up_time);
     
-    int game_map_type = game_map_type_melee;
+    int game_map_type = game_map_type_unknown | game_map_type_melee;
     packet_write_ex(dest, game_map_type);
     
     int unknown = 0;
@@ -180,30 +189,30 @@ void packet_server_start_adv_ex3(struct packet *dest)
     packet_write_ex(dest, slots_free);
     
     // check what am i supposed to send here.
-    char host_counter[] = "ruke";
+    char host_counter[] = "00000000";
     packet_write(dest, (unsigned char *) host_counter, sizeof(host_counter) - 1);
     
     int stat_start = dest->size;
     
-    int map_flags = 0;
+    unsigned char map_flags = 1;
     packet_write_ex(dest, map_flags);
     
     unsigned char empty = 0;
     packet_write_ex(dest, empty);
     
-    int map_width = 128;
+    unsigned char map_width = 128;
     packet_write_ex(dest, map_width);
     
-    int map_height = 96;
+    unsigned char map_height = 96;
     packet_write_ex(dest, map_height);
     
-    int map_crc = 0;
+    unsigned char map_crc = 0;
     packet_write_ex(dest, map_crc);
     
     char map_path[] = "./(2)EchoIsles.w3x";
     packet_write_array(dest, map_path);
     
-    char host_name[] = "ruke";
+    char host_name[] = "testruke";
     packet_write_array(dest, host_name);
     
     packet_write_ex(dest, empty);

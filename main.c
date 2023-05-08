@@ -32,6 +32,11 @@ struct server_public_key {
     unsigned char buf[32];
 };
 
+struct conn {
+    unsigned char read_buf[1024];
+    int read_size;
+};
+
 int main(int argc, char **argv)
 {
 #define port 6112
@@ -92,6 +97,43 @@ int main(int argc, char **argv)
     printf("packets were read!\n");
     // printf("first byte is correct? %d\n", response.buf[0] == bnet_header);
     printf("packet type is %d\n", (int)from_client.buf[1]);
+    
+    // ping.
+    if (from_client.buf[1] != 37) {
+        printf("expecting ping.\n");
+        goto exit;
+    }
+    
+    // int max = 0;
+    // while (from_client.buf[1] == 37 && max++ < 1) {
+    int ping = 0;
+    memcpy(&ping, from_client.buf + 4, sizeof(ping));
+    printf("ping was %d.\n", ping);
+    
+    // send back ping.
+    to_client.size = 0;
+    packet_server_ping(&to_client, ping);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to send ping.\n");
+        goto exit;
+    }
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
+    // }
+    
+    // check keys.
+    char logon_type[4] = {0};
+    char server_token[4] = {0};
+    char mpq_file_time[8] = {0};
+    char ver_file_name[256] = {0};
+    char value_string_formula[256] = {0};
+    memcpy(logon_type, from_client.buf + 4, sizeof(logon_type));
+    memcpy(server_token, from_client.buf + 8, sizeof(server_token));
+    memcpy(mpq_file_time, from_client.buf + 16, sizeof(mpq_file_time));
+    strncpy(ver_file_name, (char *) (from_client.buf + 24), sizeof(ver_file_name) - 1);
+    // +1 null terminator.
+    int ver_file_name_size = strnlen(ver_file_name, sizeof(ver_file_name)) + 1;
+    strncpy(value_string_formula, (char *) (from_client.buf + 25 + ver_file_name_size), sizeof(value_string_formula) - 1);
+    printf("file_name %s, value_string %s\n", ver_file_name, value_string_formula);
     
     unsigned char sid_auth_check = 81;
     if (from_client.buf[1] != sid_auth_check) {
@@ -208,6 +250,7 @@ int main(int argc, char **argv)
         goto exit;
     }
     
+#if 0
     // create game.
     to_client.size = 0;
     packet_server_start_adv_ex3(&to_client);
@@ -215,6 +258,32 @@ int main(int argc, char **argv)
         printf("failed to create game.\n");
         goto exit;
     }
+#endif
+    
+    // friend list (101).
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
+    // printf("packet is correct %d\n", (int)response.buf[0] == bnet_header);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
+    
+    // chat event (15).
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
+    
+    // create game.
+    to_client.size = 0;
+    packet_server_start_adv_ex3(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to create game.\n");
+        goto exit;
+    }
+    
+    // start dvex3 (28)
+    from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
+    printf("packet type is %d\n", (int)from_client.buf[1]);
+    
+    unsigned int create_game_status = 0;
+    memcpy(&create_game_status, from_client.buf + 4, sizeof(create_game_status));
+    printf("create game status:%d if 0 then ok.\n", create_game_status);
     
     sleep(30);
     

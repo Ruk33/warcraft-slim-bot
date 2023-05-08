@@ -9,6 +9,8 @@ struct channel_name {
 
 void packet_server_init(struct packet *dest);
 
+void packet_server_ping(struct packet *dest, int ping);
+
 void packet_server_account_logon(struct packet *dest, struct username *username);
 
 void packet_server_account_login_proof(struct packet *dest, struct bsha1_password *password);
