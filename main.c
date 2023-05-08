@@ -8,6 +8,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <bncsutil/bncsutil.h>
+
 #include "include/packet.h"
 #include "include/packet_server.h"
 #include "include/bsha1.h"
@@ -41,6 +43,15 @@ int main(int argc, char **argv)
 {
 #define port 6112
 #define server_address "127.0.0.1"
+    
+    char war[] = "/home/franco/Downloads/Warcraft III 1.27/war3.exe";
+    char storm_dll[] = "/home/franco/Downloads/Warcraft III 1.27/Storm.dll";
+    char game_dll[] = "/home/franco/Downloads/Warcraft III 1.27/game.dll";
+    char buf[1024] = {0};
+    unsigned int exe_version = 0;
+    
+    getExeInfo(war, buf, sizeof(buf), &exe_version, BNCSUTIL_PLATFORM_X86);
+    printf("buf is: %s, exe_version: %d\n", buf, exe_version);
     
     if (argc != 3) {
         printf("%s <username> <password>\n", argv[0]);
@@ -134,6 +145,28 @@ int main(int argc, char **argv)
     int ver_file_name_size = strnlen(ver_file_name, sizeof(ver_file_name)) + 1;
     strncpy(value_string_formula, (char *) (from_client.buf + 25 + ver_file_name_size), sizeof(value_string_formula) - 1);
     printf("file_name %s, value_string %s\n", ver_file_name, value_string_formula);
+    
+    unsigned long exe_version_hash = 0;
+    checkRevisionFlat(value_string_formula,
+                      war,
+                      storm_dll,
+                      game_dll,
+                      extractMPQNumber(ver_file_name),
+                      &exe_version_hash);
+    
+    unsigned char client_token_raw[] = {220, 1, 203, 7};
+    unsigned int client_token = 0;
+    unsigned int server_token2 = 0;
+    unsigned int public_value = 0;
+    unsigned int product = 0;
+    char hash_buf[1024] = {0};
+    memcpy(&client_token, client_token_raw, sizeof(client_token));
+    memcpy(&server_token2, server_token, sizeof(server_token2));
+    // int key_type = 3; // KEY_WARCRAFT3;
+    char cd_key[] = "warcraft-3-key-without-hyphen";
+    int q = kd_quick(cd_key, client_token, server_token2, &public_value, &product, hash_buf, sizeof(hash_buf));
+    
+    printf("kd_quick success: %d\n", q);
     
     unsigned char sid_auth_check = 81;
     if (from_client.buf[1] != sid_auth_check) {

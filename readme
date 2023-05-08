@@ -2,6 +2,10 @@ warcraft-slim-bot
 	this is a very basic bot for hosting games in servers using pvpgn.
 	it only support linux and warcraft 3 1.27b.
 
+dependencies
+	- so far, only bncsutil is required.
+	- download it from https://github.com/BNETDocs/bncsutil
+
 build
 	- run bash ./build.sh
 
