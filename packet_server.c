@@ -3,6 +3,7 @@
 #include "include/packet.h"
 #include "include/packet_server.h"
 #include "include/bsha1.h"
+#include "include/game.h"
 
 static void packet_write_header(struct packet *dest, unsigned char packet_type)
 {
@@ -143,5 +144,96 @@ void packet_server_join_channel(struct packet *dest, struct channel_name *channe
         // +1 null terminator.
         packet_write(dest, (unsigned char *) channel->buf, channel_len + 1);
     }
+    packet_write_size(dest);
+}
+
+// note: should we change the weird name to something like
+// start game, create game, or...?
+void packet_server_start_adv_ex3(struct packet *dest)
+{
+    assert(dest);
+    unsigned char packet_type = 28;
+    packet_write_header(dest, packet_type);
+    
+    int game_state = (int) game_public;
+    packet_write_ex(dest, game_state);
+    
+    int up_time = 0;
+    packet_write_ex(dest, up_time);
+    
+    int game_map_type = game_map_type_melee;
+    packet_write_ex(dest, game_map_type);
+    
+    int unknown = 0;
+    packet_write_ex(dest, unknown);
+    
+    unsigned char custom_game[] = {0, 0, 0, 0};
+    packet_write_array(dest, custom_game);
+    
+    char name[] = "testing!";
+    packet_write_array(dest, name);
+    
+    unsigned char password = 0;
+    packet_write_ex(dest ,password);
+    
+    unsigned char slots_free = 110;
+    packet_write_ex(dest, slots_free);
+    
+    // check what am i supposed to send here.
+    char host_counter[] = "ruke";
+    packet_write(dest, (unsigned char *) host_counter, sizeof(host_counter) - 1);
+    
+    int stat_start = dest->size;
+    
+    int map_flags = 0;
+    packet_write_ex(dest, map_flags);
+    
+    unsigned char empty = 0;
+    packet_write_ex(dest, empty);
+    
+    int map_width = 128;
+    packet_write_ex(dest, map_width);
+    
+    int map_height = 96;
+    packet_write_ex(dest, map_height);
+    
+    int map_crc = 0;
+    packet_write_ex(dest, map_crc);
+    
+    char map_path[] = "./(2)EchoIsles.w3x";
+    packet_write_array(dest, map_path);
+    
+    char host_name[] = "ruke";
+    packet_write_array(dest, host_name);
+    
+    packet_write_ex(dest, empty);
+    
+    // echo isles sha1.
+    char sha1[] = "a98ac683c62bd3d45e1c43535ca75f6599aa60cf";
+    packet_write_array(dest, sha1);
+    
+    // encode stat string.
+    unsigned char mask = 1;
+    int size = dest->size;
+    for (int i = stat_start; i < size; i++) {
+        if (dest->buf[i] % 2 == 0) {
+            dest->buf[i] = dest->buf[i] + 1;
+        } else {
+            mask |= 1 << (((i - stat_start) % 7) + 1);
+        }
+        if ((i - stat_start) % 7 == 6 || i == size - 1) {
+            // manually add mask. double check since this is
+            // probably wrong.
+            int index = size - 1 - ((i - stat_start) % 7);
+            unsigned char tmp = dest->buf[index];
+            dest->buf[index] = mask;
+            dest->buf[index + 1] = tmp;
+            dest->size++;
+            mask = 1;
+        }
+    }
+    // null terminator from stat "string".
+    packet_write_ex(dest, empty);
+    
     packet_write_size(dest);
 }

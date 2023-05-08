@@ -22,3 +22,5 @@ void packet_server_friend_list(struct packet *dest);
 void packet_server_clan_member_list(struct packet *dest);
 
 void packet_server_join_channel(struct packet *dest, struct channel_name *channel);
+
+void packet_server_start_adv_ex3(struct packet *dest);

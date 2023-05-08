@@ -208,6 +208,14 @@ int main(int argc, char **argv)
         goto exit;
     }
     
+    // create game.
+    to_client.size = 0;
+    packet_server_start_adv_ex3(&to_client);
+    if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+        printf("failed to create game.\n");
+        goto exit;
+    }
+    
     sleep(30);
     
     exit:
