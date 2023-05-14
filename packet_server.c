@@ -246,3 +246,38 @@ void packet_server_start_adv_ex3(struct packet *dest)
     
     packet_write_size(dest);
 }
+
+void packet_server_sid_auth_check(struct packet *dest,
+                                  unsigned int client_token,
+                                  unsigned int exe_version,
+                                  unsigned long exe_version_hash,
+                                  struct key_info_roc *key_info_roc,
+                                  struct key_info_tft *key_info_tft,
+                                  struct exe_info *exe_info)
+{
+    assert(dest);
+    assert(key_info_roc);
+    assert(key_info_tft);
+
+    unsigned char packet_type = 81;
+    packet_write_header(dest, packet_type);
+
+    packet_write_ex(dest, client_token);
+    packet_write_ex(dest, exe_version);
+    packet_write_ex(dest, exe_version_hash);
+
+    unsigned int keys_count = 2;
+    packet_write_ex(dest, keys_count);
+
+    unsigned int spawn = 0;
+    packet_write_ex(dest, spawn);
+
+    packet_write_array(dest, key_info_roc->buf);
+    packet_write_array(dest, key_info_tft->buf);
+    packet_write_array(dest, exe_info->buf);
+
+    char owner[] = "ruke";
+    packet_write_array(dest, owner);
+
+    packet_write_size(dest);
+}

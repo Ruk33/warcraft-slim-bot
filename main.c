@@ -18,14 +18,6 @@ struct server_name {
     char buf[256];
 };
 
-struct cd_key_roc {
-    char buf[32]; // seems like the size is 26
-};
-
-struct cd_key_tft {
-    char buf[32]; // seems like the size is 26
-};
-
 struct server_salt {
     unsigned char buf[32];
 };
@@ -34,24 +26,63 @@ struct server_public_key {
     unsigned char buf[32];
 };
 
-struct conn {
-    unsigned char read_buf[1024];
-    int read_size;
+struct ver_file_name {
+    char buf[256];
 };
+
+struct value_string_formula {
+    char buf[256];
+};
+
+struct conn {
+    int logon_type;
+    int server_token;
+    long long mpq_file_time;
+    struct ver_file_name ver_file_name;
+    struct value_string_formula value_string_formula;
+    unsigned int client_token;
+    unsigned int public_value;
+    unsigned int product;
+    unsigned int exe_version;
+    unsigned long exe_version_hash;
+    struct cd_key_roc cd_key_roc;
+    struct cd_key_tft cd_key_tft;
+    struct key_info_roc key_info_roc;
+    struct key_info_tft key_info_tft;
+};
+
+static void read_packet(struct packet *dest, int client_fd)
+{
+    // 1 constant 0xff
+    // 1 packet type
+    // 2 packet size
+    dest->size = (int) recv(client_fd, dest->buf, 4, 0);
+    assert(dest->size == 4 && "minimum of 4 bytes per packet.");
+    assert(dest->buf[0] == 0xff && "first byte isnt correct.");
+    
+    unsigned short packet_size = 0;
+    memcpy(&packet_size, dest->buf + 2, sizeof(packet_size));
+
+    dest->size += (int) recv(client_fd, dest->buf + 4, packet_size - 4, 0);
+    assert(dest->size == packet_size);
+
+    // todo, dont read more than buf capacity
+    // todo, check that recv doesnt return -1 
+}
 
 int main(int argc, char **argv)
 {
 #define port 6112
 #define server_address "127.0.0.1"
     
-    char war[] = "/home/franco/Downloads/Warcraft III 1.27/war3.exe";
-    char storm_dll[] = "/home/franco/Downloads/Warcraft III 1.27/Storm.dll";
-    char game_dll[] = "/home/franco/Downloads/Warcraft III 1.27/game.dll";
-    char buf[1024] = {0};
+    char war[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/war3.exe";
+    char storm_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Storm.dll";
+    char game_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/game.dll";
+    struct exe_info exe_info = {0};
     unsigned int exe_version = 0;
     
-    getExeInfo(war, buf, sizeof(buf), &exe_version, BNCSUTIL_PLATFORM_X86);
-    printf("buf is: %s, exe_version: %d\n", buf, exe_version);
+    getExeInfo(war, exe_info.buf, sizeof(exe_info.buf), &exe_version, BNCSUTIL_PLATFORM_X86);
+    printf("buf is: '%s', exe_version: %d\n", exe_info.buf, exe_version);
     
     if (argc != 3) {
         printf("%s <username> <password>\n", argv[0]);
@@ -85,6 +116,7 @@ int main(int argc, char **argv)
     send(client_fd, &start, sizeof(start), 0);
     
     // packets.
+    static struct conn conn = {0};
     struct packet to_client = {0};
     struct packet from_client = {0};
     
@@ -103,6 +135,87 @@ int main(int argc, char **argv)
     }
     printf("packet was sent. waiting for response.\n");
     
+    while (1) {
+        read_packet(&from_client, client_fd);
+        printf("new packet from client.\n");
+
+        switch (from_client.buf[1]) {
+        case 37: // ping
+        printf("ping\n");
+        break;
+
+        case 80: // auth info
+        memcpy(&conn.logon_type, from_client.buf + 4, sizeof(conn.logon_type));
+        memcpy(&conn.server_token, from_client.buf + 8, sizeof(conn.server_token));
+        memcpy(&conn.mpq_file_time, from_client.buf + 16, sizeof(conn.mpq_file_time));
+        strncpy(conn.ver_file_name.buf, 
+                (char *) (from_client.buf + 24), 
+                sizeof(conn.ver_file_name.buf) - 1);
+        // +1 null terminator.
+        int ver_file_name_size = strnlen(conn.ver_file_name.buf, 
+                                         sizeof(conn.ver_file_name.buf)) + 1;
+        strncpy(conn.value_string_formula.buf, 
+                (char *) (from_client.buf + 25 + ver_file_name_size), 
+                sizeof(conn.value_string_formula.buf) - 1);
+        printf("file_name %s, value_string %s\n", 
+               conn.ver_file_name.buf, 
+               conn.value_string_formula.buf);
+
+        checkRevisionFlat(conn.value_string_formula.buf,
+                          war,
+                          storm_dll,
+                          game_dll,
+                          extractMPQNumber(conn.ver_file_name.buf),
+                          &conn.exe_version_hash);
+
+        unsigned char client_token_raw[] = {220, 1, 203, 7};
+        memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
+        conn.cd_key_roc = (struct cd_key_roc) {"key-without-hyphen"};
+        conn.cd_key_tft = (struct cd_key_tft) {"key-without-hyphen"};
+        int key_result = 0;
+        char hash_buf[1024] = {0};
+        
+        key_result = kd_quick(conn.cd_key_roc.buf, 
+                              conn.client_token, 
+                              conn.server_token, 
+                              &conn.public_value, 
+                              &conn.product, 
+                              conn.key_info_roc.buf, 
+                              sizeof(conn.key_info_roc.buf));
+        printf("roc key info > %d\n", key_result);
+
+        key_result = kd_quick(conn.cd_key_tft.buf, 
+                              conn.client_token, 
+                              conn.server_token, 
+                              &conn.public_value, 
+                              &conn.product, 
+                              conn.key_info_tft.buf, 
+                              sizeof(conn.key_info_tft.buf));
+        printf("tft key info > %d\n", key_result);
+
+        to_client.size = 0;
+        packet_server_sid_auth_check(&to_client,
+                                     conn.client_token,
+                                     exe_version,
+                                     conn.exe_version_hash,
+                                     &conn.key_info_roc,
+                                     &conn.key_info_tft,
+                                     &exe_info);
+        if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
+            printf("failed to send sid account.\n");
+            goto exit;
+        }
+
+        break;
+
+        default:
+        printf("unknown packet received %d.\n", from_client.buf[1]);
+        goto exit;
+        break;
+        }
+    }
+
+#if 0
     // start of checking if "keys" are valid.
     from_client.size = (int) recv(client_fd, from_client.buf, sizeof(from_client.buf), 0);
     printf("packets were read!\n");
@@ -319,6 +432,7 @@ int main(int argc, char **argv)
     printf("create game status:%d if 0 then ok.\n", create_game_status);
     
     sleep(30);
+#endif
     
     exit:
     close(client_fd);

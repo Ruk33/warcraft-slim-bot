@@ -7,6 +7,27 @@ struct channel_name {
     char buf[32]; // todo: check correct limit.
 };
 
+struct cd_key_roc {
+    char buf[32]; // seems like the size is 26
+};
+
+struct cd_key_tft {
+    char buf[32]; // seems like the size is 26
+};
+
+struct key_info_roc {
+    char buf[20];
+};
+
+struct key_info_tft {
+    char buf[20];
+};
+
+struct exe_info {
+    // including null terminator.
+    char buf[34];
+};
+
 void packet_server_init(struct packet *dest);
 
 void packet_server_ping(struct packet *dest, int ping);
@@ -26,3 +47,11 @@ void packet_server_clan_member_list(struct packet *dest);
 void packet_server_join_channel(struct packet *dest, struct channel_name *channel);
 
 void packet_server_start_adv_ex3(struct packet *dest);
+
+void packet_server_sid_auth_check(struct packet *dest,
+                                  unsigned int client_token,
+                                  unsigned int exe_version,
+                                  unsigned long exe_version_hash,
+                                  struct key_info_roc *key_info_roc,
+                                  struct key_info_tft *key_info_tft,
+                                  struct exe_info *exe_info);
