@@ -27,11 +27,11 @@ struct server_public_key {
 };
 
 struct ver_file_name {
-    char buf[256];
+    char buf[15];
 };
 
 struct value_string_formula {
-    char buf[256];
+    char buf[63];
 };
 
 struct conn {
@@ -84,9 +84,9 @@ int main(int argc, char **argv)
     getExeInfo(war, exe_info.buf, sizeof(exe_info.buf), &exe_version, BNCSUTIL_PLATFORM_X86);
     printf("buf is: '%s', exe_version: %d\n", exe_info.buf, exe_version);
     
-    if (argc != 3) {
-        printf("%s <username> <password>\n", argv[0]);
-        printf("example: %s my-bot-username my-bot-password\n", argv[0]);
+    if (argc != 5) {
+        printf("%s <username> <password> <roc key> <tft key>\n", argv[0]);
+        printf("example: %s my-bot-username my-bot-password roc-key-without-hypens tft-without-hyphens\n", argv[0]);
         return 0;
     }
     
@@ -170,11 +170,9 @@ int main(int argc, char **argv)
 
         unsigned char client_token_raw[] = {220, 1, 203, 7};
         memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
-        conn.cd_key_roc = (struct cd_key_roc) {"key-without-hyphen"};
-        conn.cd_key_tft = (struct cd_key_tft) {"key-without-hyphen"};
+        strncpy(conn.cd_key_roc.buf, argv[3], sizeof(conn.cd_key_roc.buf) - 1);
+        strncpy(conn.cd_key_tft.buf, argv[4], sizeof(conn.cd_key_tft.buf) - 1);
         int key_result = 0;
-        char hash_buf[1024] = {0};
-        
         key_result = kd_quick(conn.cd_key_roc.buf, 
                               conn.client_token, 
                               conn.server_token, 
@@ -206,6 +204,12 @@ int main(int argc, char **argv)
             goto exit;
         }
 
+        break;
+
+        case 81:
+        unsigned int key_status = 0;
+        memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
+        printf("key status is %d.\n", key_status);
         break;
 
         default:
