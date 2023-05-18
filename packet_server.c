@@ -27,7 +27,7 @@ void packet_server_init(struct packet *dest)
     unsigned char protocol_id[] = {0, 0, 0, 0};
     unsigned char platform_id[] = {54, 56, 88, 73}; // "IX86"
     unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
-    unsigned char version_id[] = {29, 0, 0, 0};
+    unsigned char version_id[] = {27, 0, 0, 0};
     unsigned char language[] = {83, 85, 110, 101}; // "enUS"
     unsigned char local_ip[] = {127, 0, 0, 1};
     unsigned char time_zone_bias[] = {60, 0, 0, 0}; // 60 minutes (GMT +0100) but this is probably -0100

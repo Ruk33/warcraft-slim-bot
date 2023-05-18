@@ -8,11 +8,11 @@ struct channel_name {
 };
 
 struct cd_key_roc {
-    char buf[32]; // seems like the size is 26
+    char buf[27]; // seems like the size is 26, plus null terminator.
 };
 
 struct cd_key_tft {
-    char buf[32]; // seems like the size is 26
+    char buf[27]; // seems like the size is 26, plus null terminator.
 };
 
 struct key_info_roc {
