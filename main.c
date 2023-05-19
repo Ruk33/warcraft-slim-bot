@@ -56,18 +56,37 @@ static void read_packet(struct packet *dest, int client_fd)
     // 1 constant 0xff
     // 1 packet type
     // 2 packet size
+    printf("INF / waiting for packet from client...\n");
+
     dest->size = (int) recv(client_fd, dest->buf, 4, 0);
     assert(dest->size == 4 && "minimum of 4 bytes per packet.");
     assert(dest->buf[0] == 0xff && "first byte isnt correct.");
-    
+
     unsigned short packet_size = 0;
     memcpy(&packet_size, dest->buf + 2, sizeof(packet_size));
 
     dest->size += (int) recv(client_fd, dest->buf + 4, packet_size - 4, 0);
     assert(dest->size == packet_size);
 
+    printf(" OK / packet from client correct, type is %#04x...\n", dest->buf[1]);
+
     // todo, dont read more than buf capacity
     // todo, check that recv doesnt return -1 
+}
+
+static int send_packet(int client_fd, struct packet *src, char *packet_name)
+{
+    assert(src);
+    assert(packet_name);
+
+    printf("INF / trying to send '%s'...\n", packet_name);
+    if (send(client_fd, src->buf, src->size, 0) != src->size) {
+        printf("ERR / failed to send '%s'...\n", packet_name);
+        return 0;
+    }
+
+    printf(" OK / packet '%s' was sent...\n", packet_name);
+    return 1;
 }
 
 int main(int argc, char **argv)
@@ -82,7 +101,7 @@ int main(int argc, char **argv)
     unsigned int exe_version = 0;
     
     getExeInfo(war, exe_info.buf, sizeof(exe_info.buf), &exe_version, BNCSUTIL_PLATFORM_X86);
-    printf("buf is: '%s', exe_version: %d\n", exe_info.buf, exe_version);
+    printf("INF / buf is: '%s', exe_version: %d\n", exe_info.buf, exe_version);
     
     if (argc != 5) {
         printf("%s <username> <password> <roc key> <tft key>\n", argv[0]);
@@ -94,22 +113,22 @@ int main(int argc, char **argv)
     address.sin_family = AF_INET;
     address.sin_port = htons(port);
     if (inet_pton(AF_INET, server_address, &address.sin_addr) <= 0) {
-        printf("pton failed.\n");
+        printf("ERR / pton failed.\n");
         goto exit;
     }
     
     int client_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (client_fd < 0) {
-        printf("socket failed.\n");
+        printf("ERR / socket failed.\n");
         goto exit;
     }
     
     if (connect(client_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        printf("connect failed.\n");
+        printf("ERR / connect failed.\n");
         goto exit;
     }
     
-    printf("seems like it's connected.\n");
+    printf("INF / seems like it's connected.\n");
     
     // send initial 1.
     unsigned char start = 1;
@@ -130,21 +149,29 @@ int main(int argc, char **argv)
     to_client.size = 0;
     packet_server_init(&to_client);
     if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
-        printf("failed to send init packet.\n");
+        printf("ERR / failed to send init packet.\n");
         goto exit;
     }
-    printf("packet was sent. waiting for response.\n");
+    printf("INF / packet was sent. waiting for response.\n");
     
     while (1) {
         read_packet(&from_client, client_fd);
-        printf("new packet from client.\n");
 
         switch (from_client.buf[1]) {
-        case 37: // ping
-        printf("ping\n");
+        case 0x25: // ping
+        unsigned int ping = 0;
+        memcpy(&ping, from_client.buf + 4, sizeof(ping));
+        printf("ping %d\n", ping);
+
+        to_client.size = 0;
+        packet_server_ping(&to_client, ping);
+        if (!send_packet(client_fd, &to_client, "ping")) {
+            printf("failed to send ping.\n");
+            goto exit;
+        }
         break;
 
-        case 80: // auth info
+        case 0x50: // auth info
         memcpy(&conn.logon_type, from_client.buf + 4, sizeof(conn.logon_type));
         memcpy(&conn.server_token, from_client.buf + 8, sizeof(conn.server_token));
         memcpy(&conn.mpq_file_time, from_client.buf + 16, sizeof(conn.mpq_file_time));
@@ -157,7 +184,7 @@ int main(int argc, char **argv)
         strncpy(conn.value_string_formula.buf, 
                 (char *) (from_client.buf + 25 + ver_file_name_size), 
                 sizeof(conn.value_string_formula.buf) - 1);
-        printf("file_name %s, value_string %s\n", 
+        printf("INF / file_name %s, value_string %s\n", 
                conn.ver_file_name.buf, 
                conn.value_string_formula.buf);
 
@@ -206,7 +233,7 @@ int main(int argc, char **argv)
 
         break;
 
-        case 81:
+        case 0x51:
         unsigned int key_status = 0;
         memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
         printf("key status is %d.\n", key_status);
