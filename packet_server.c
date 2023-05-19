@@ -26,7 +26,8 @@ void packet_server_init(struct packet *dest)
     
     unsigned char protocol_id[] = {0, 0, 0, 0};
     unsigned char platform_id[] = {54, 56, 88, 73}; // "IX86"
-    unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
+    // unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
+    unsigned int product_id = 0x1E;
     unsigned char version_id[] = {27, 0, 0, 0};
     unsigned char language[] = {83, 85, 110, 101}; // "enUS"
     unsigned char local_ip[] = {127, 0, 0, 1};
@@ -34,7 +35,7 @@ void packet_server_init(struct packet *dest)
     
     packet_write_array(dest, protocol_id);
     packet_write_array(dest, platform_id);
-    packet_write_array(dest, product_id);
+    packet_write_ex(dest, product_id);
     packet_write_array(dest, version_id);
     packet_write_array(dest, language);
     packet_write_array(dest, local_ip);

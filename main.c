@@ -35,9 +35,10 @@ struct value_string_formula {
 };
 
 struct conn {
-    int logon_type;
-    int server_token;
-    long long mpq_file_time;
+    unsigned int logon_type;
+    unsigned int server_token;
+    unsigned int udp_value;
+    unsigned long long mpq_file_time;
     struct ver_file_name ver_file_name;
     struct value_string_formula value_string_formula;
     unsigned int client_token;
@@ -50,6 +51,13 @@ struct conn {
     struct key_info_roc key_info_roc;
     struct key_info_tft key_info_tft;
 };
+
+#define packet_read_value(dest, packet, head) \
+    (memcpy(&(dest), (packet)->buf + 4 + *(head), sizeof(dest)), *(head) += sizeof(dest))
+
+// +1 null terminator.
+#define packet_read_string(dest, packet, head) \
+    (strncpy((dest), (char *) ((packet)->buf + 4 + *(head)), sizeof(dest) - 1), *(head) += strlen(dest) + 1)
 
 static void read_packet(struct packet *dest, int client_fd)
 {
@@ -93,13 +101,13 @@ int main(int argc, char **argv)
 {
 #define port 6112
 #define server_address "127.0.0.1"
-    
+
     char war[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/war3.exe";
     char storm_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Storm.dll";
     char game_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/game.dll";
     struct exe_info exe_info = {0};
     unsigned int exe_version = 0;
-    
+
     getExeInfo(war, exe_info.buf, sizeof(exe_info.buf), &exe_version, BNCSUTIL_PLATFORM_X86);
     printf("INF / buf is: '%s', exe_version: %d\n", exe_info.buf, exe_version);
     
@@ -158,6 +166,7 @@ int main(int argc, char **argv)
         read_packet(&from_client, client_fd);
 
         switch (from_client.buf[1]) {
+
         case 0x25: // ping
         unsigned int ping = 0;
         memcpy(&ping, from_client.buf + 4, sizeof(ping));
@@ -172,22 +181,13 @@ int main(int argc, char **argv)
         break;
 
         case 0x50: // auth info
-        memcpy(&conn.logon_type, from_client.buf + 4, sizeof(conn.logon_type));
-        memcpy(&conn.server_token, from_client.buf + 8, sizeof(conn.server_token));
-        memcpy(&conn.mpq_file_time, from_client.buf + 16, sizeof(conn.mpq_file_time));
-        strncpy(conn.ver_file_name.buf, 
-                (char *) (from_client.buf + 24), 
-                sizeof(conn.ver_file_name.buf) - 1);
-        // +1 null terminator.
-        int ver_file_name_size = strnlen(conn.ver_file_name.buf, 
-                                         sizeof(conn.ver_file_name.buf)) + 1;
-        strncpy(conn.value_string_formula.buf, 
-                (char *) (from_client.buf + 25 + ver_file_name_size), 
-                sizeof(conn.value_string_formula.buf) - 1);
-        printf("INF / file_name %s, value_string %s\n", 
-               conn.ver_file_name.buf, 
-               conn.value_string_formula.buf);
-
+        int head = 0;
+        packet_read_value(conn.logon_type, &from_client, &head);
+        packet_read_value(conn.server_token, &from_client, &head);
+        packet_read_value(conn.udp_value, &from_client, &head);
+        packet_read_value(conn.mpq_file_time, &from_client, &head);
+        packet_read_string(conn.ver_file_name.buf, &from_client, &head);
+        packet_read_string(conn.value_string_formula.buf, &from_client, &head);
         checkRevisionFlat(conn.value_string_formula.buf,
                           war,
                           storm_dll,
@@ -199,6 +199,7 @@ int main(int argc, char **argv)
         memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
         strncpy(conn.cd_key_roc.buf, argv[3], sizeof(conn.cd_key_roc.buf) - 1);
         strncpy(conn.cd_key_tft.buf, argv[4], sizeof(conn.cd_key_tft.buf) - 1);
+
         int key_result = 0;
         key_result = kd_quick(conn.cd_key_roc.buf, 
                               conn.client_token, 
@@ -207,7 +208,7 @@ int main(int argc, char **argv)
                               &conn.product, 
                               conn.key_info_roc.buf, 
                               sizeof(conn.key_info_roc.buf));
-        printf("roc key info > %d\n", key_result);
+        printf("INF / roc key info > %d\n", key_result);
 
         key_result = kd_quick(conn.cd_key_tft.buf, 
                               conn.client_token, 
@@ -216,7 +217,7 @@ int main(int argc, char **argv)
                               &conn.product, 
                               conn.key_info_tft.buf, 
                               sizeof(conn.key_info_tft.buf));
-        printf("tft key info > %d\n", key_result);
+        printf("INF / tft key info > %d\n", key_result);
 
         to_client.size = 0;
         packet_server_sid_auth_check(&to_client,
@@ -226,18 +227,20 @@ int main(int argc, char **argv)
                                      &conn.key_info_roc,
                                      &conn.key_info_tft,
                                      &exe_info);
-        if (send(client_fd, to_client.buf, to_client.size, 0) != to_client.size) {
-            printf("failed to send sid account.\n");
+        if (!send_packet(client_fd, &to_client, "sid auth check"))
             goto exit;
-        }
-
         break;
 
-        case 0x51:
-        unsigned int key_status = 0;
-        memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
-        printf("key status is %d.\n", key_status);
-        break;
+        case 0x51: {
+            int head = 0;
+            unsigned int key_status = 0;
+            packet_read_value(key_status, &from_client, &head);
+
+            char description[256] = {0};
+            packet_read_string(description, &from_client, &head);
+            memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
+            printf("key status is %d / '%s'.\n", key_status, description);
+        } break;
 
         default:
         printf("unknown packet received %d.\n", from_client.buf[1]);
