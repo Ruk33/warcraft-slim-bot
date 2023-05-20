@@ -11,6 +11,10 @@ packet_write((dest), (unsigned char *) &(src), sizeof(src))
 #define packet_write_array(dest, src) \
 packet_write((dest), (unsigned char *) (src), (sizeof(src)))
 
+// +1 null terminator.
+#define packet_write_string(dest, src) \
+packet_write((dest), (unsigned char *) (src), (strnlen((src), sizeof(src)) + 1))
+
 // append n bytes from src to the end of dest.
 void packet_write(struct packet *dest, unsigned char *src, int n);
 

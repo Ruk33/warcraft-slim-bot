@@ -28,6 +28,10 @@ struct exe_info {
     char buf[34];
 };
 
+struct public_key {
+    char buf[32];
+};
+
 void packet_server_init(struct packet *dest);
 
 void packet_server_ping(struct packet *dest, int ping);
@@ -55,3 +59,7 @@ void packet_server_sid_auth_check(struct packet *dest,
                                   struct key_info_roc *key_info_roc,
                                   struct key_info_tft *key_info_tft,
                                   struct exe_info *exe_info);
+
+void packet_server_sid_auth_account_logon(struct packet *dest,
+                                          struct username *username,
+                                          struct public_key *public_key);

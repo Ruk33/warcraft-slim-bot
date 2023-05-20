@@ -282,3 +282,19 @@ void packet_server_sid_auth_check(struct packet *dest,
 
     packet_write_size(dest);
 }
+
+void packet_server_sid_auth_account_logon(struct packet *dest, 
+                                          struct username *username,
+                                          struct public_key *public_key)
+{
+    assert(dest);
+    assert(username);
+    assert(public_key);
+
+    unsigned char packet_type = 0x53;
+    packet_write_header(dest, packet_type);
+
+    packet_write_array(dest, public_key->buf);
+    packet_write_string(dest, username->buf);
+    packet_write_size(dest);
+}

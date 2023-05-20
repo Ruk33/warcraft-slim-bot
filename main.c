@@ -22,10 +22,6 @@ struct server_salt {
     unsigned char buf[32];
 };
 
-struct server_public_key {
-    unsigned char buf[32];
-};
-
 struct ver_file_name {
     char buf[15];
 };
@@ -158,6 +154,17 @@ int main(int argc, char **argv)
     unsigned char client_token_raw[] = {220, 1, 203, 7};
     memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
 
+    // yes, this allocates memory but since it's only done
+    // once, let the operating system take care of it.
+    nls_t *nls = nls_init(username.buf, password.buf);
+    if (!nls) {
+        printf("ERR / unable to init nls.\n");
+        goto exit;
+    }
+
+    struct public_key public_key = {0};
+    nls_get_A(nls, public_key.buf);
+
     // send init packet.
     to_client.size = 0;
     packet_server_init(&to_client);
@@ -242,10 +249,16 @@ int main(int argc, char **argv)
                 printf("ERR / keys were not accepted.\n");
                 goto exit;
             }
+
+            // sid auth account logon
+            to_client.size = 0;
+            packet_server_sid_auth_account_logon(&to_client, &username, &public_key);
+            if (!send_packet(client_fd, &to_client, "sid auth account logon"))
+                goto exit;
         } break;
 
         default: {
-            printf("unknown packet received %d.\n", from_client.buf[1]);
+            printf("INF / the packet wont be handled, closing connection.\n");
             goto exit;
         } break;
         }
