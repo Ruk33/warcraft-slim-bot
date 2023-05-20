@@ -152,7 +152,12 @@ int main(int argc, char **argv)
     struct bsha1_password password = {0};
     strncpy(username.buf, argv[1], sizeof(username.buf) - 1);
     strncpy(password.buf, argv[2], sizeof(password.buf) - 1);
-    
+    strncpy(conn.cd_key_roc.buf, argv[3], sizeof(conn.cd_key_roc.buf) - 1);
+    strncpy(conn.cd_key_tft.buf, argv[4], sizeof(conn.cd_key_tft.buf) - 1);
+
+    unsigned char client_token_raw[] = {220, 1, 203, 7};
+    memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
+
     // send init packet.
     to_client.size = 0;
     packet_server_init(&to_client);
@@ -167,85 +172,82 @@ int main(int argc, char **argv)
 
         switch (from_client.buf[1]) {
 
-        case 0x25: // ping
-        unsigned int ping = 0;
-        memcpy(&ping, from_client.buf + 4, sizeof(ping));
-        printf("ping %d\n", ping);
+        // ping.
+        case 0x25: {
+            unsigned int ping = 0;
+            memcpy(&ping, from_client.buf + 4, sizeof(ping));
+            printf("INF / ping %d\n", ping);
 
-        to_client.size = 0;
-        packet_server_ping(&to_client, ping);
-        if (!send_packet(client_fd, &to_client, "ping")) {
-            printf("failed to send ping.\n");
-            goto exit;
-        }
-        break;
-
-        case 0x50: // auth info
-        int head = 0;
-        packet_read_value(conn.logon_type, &from_client, &head);
-        packet_read_value(conn.server_token, &from_client, &head);
-        packet_read_value(conn.udp_value, &from_client, &head);
-        packet_read_value(conn.mpq_file_time, &from_client, &head);
-        packet_read_string(conn.ver_file_name.buf, &from_client, &head);
-        packet_read_string(conn.value_string_formula.buf, &from_client, &head);
-        checkRevisionFlat(conn.value_string_formula.buf,
-                          war,
-                          storm_dll,
-                          game_dll,
-                          extractMPQNumber(conn.ver_file_name.buf),
-                          &conn.exe_version_hash);
-
-        unsigned char client_token_raw[] = {220, 1, 203, 7};
-        memcpy(&conn.client_token, client_token_raw, sizeof(conn.client_token));
-        strncpy(conn.cd_key_roc.buf, argv[3], sizeof(conn.cd_key_roc.buf) - 1);
-        strncpy(conn.cd_key_tft.buf, argv[4], sizeof(conn.cd_key_tft.buf) - 1);
-
-        int key_result = 0;
-        key_result = kd_quick(conn.cd_key_roc.buf, 
-                              conn.client_token, 
-                              conn.server_token, 
-                              &conn.public_value, 
-                              &conn.product, 
-                              conn.key_info_roc.buf, 
-                              sizeof(conn.key_info_roc.buf));
-        printf("INF / roc key info > %d\n", key_result);
-
-        key_result = kd_quick(conn.cd_key_tft.buf, 
-                              conn.client_token, 
-                              conn.server_token, 
-                              &conn.public_value, 
-                              &conn.product, 
-                              conn.key_info_tft.buf, 
-                              sizeof(conn.key_info_tft.buf));
-        printf("INF / tft key info > %d\n", key_result);
-
-        to_client.size = 0;
-        packet_server_sid_auth_check(&to_client,
-                                     conn.client_token,
-                                     exe_version,
-                                     conn.exe_version_hash,
-                                     &conn.key_info_roc,
-                                     &conn.key_info_tft,
-                                     &exe_info);
-        if (!send_packet(client_fd, &to_client, "sid auth check"))
-            goto exit;
-        break;
-
-        case 0x51: {
-            int head = 0;
-            unsigned int key_status = 0;
-            packet_read_value(key_status, &from_client, &head);
-
-            char description[256] = {0};
-            packet_read_string(description, &from_client, &head);
-            memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
-            printf("key status is %d / '%s'.\n", key_status, description);
+            to_client.size = 0;
+            packet_server_ping(&to_client, ping);
+            if (!send_packet(client_fd, &to_client, "ping"))
+                goto exit;
         } break;
 
-        default:
-        printf("unknown packet received %d.\n", from_client.buf[1]);
-        goto exit;
-        break;
+        // auth info
+        case 0x50: {
+            int head = 0;
+            packet_read_value(conn.logon_type, &from_client, &head);
+            packet_read_value(conn.server_token, &from_client, &head);
+            packet_read_value(conn.udp_value, &from_client, &head);
+            packet_read_value(conn.mpq_file_time, &from_client, &head);
+            packet_read_string(conn.ver_file_name.buf, &from_client, &head);
+            packet_read_string(conn.value_string_formula.buf, &from_client, &head);
+            checkRevisionFlat(conn.value_string_formula.buf,
+                              war,
+                              storm_dll,
+                              game_dll,
+                              extractMPQNumber(conn.ver_file_name.buf),
+                              &conn.exe_version_hash);
+
+            int key_result = 0;
+            key_result = kd_quick(conn.cd_key_roc.buf, 
+                                  conn.client_token, 
+                                  conn.server_token, 
+                                  &conn.public_value, 
+                                  &conn.product, 
+                                  conn.key_info_roc.buf, 
+                                  sizeof(conn.key_info_roc.buf));
+            printf("INF / roc key info > %d\n", key_result);
+
+            key_result = kd_quick(conn.cd_key_tft.buf, 
+                                  conn.client_token, 
+                                  conn.server_token, 
+                                  &conn.public_value, 
+                                  &conn.product, 
+                                  conn.key_info_tft.buf, 
+                                  sizeof(conn.key_info_tft.buf));
+            printf("INF / tft key info > %d\n", key_result);
+
+            to_client.size = 0;
+            packet_server_sid_auth_check(&to_client,
+                                         conn.client_token,
+                                         exe_version,
+                                         conn.exe_version_hash,
+                                         &conn.key_info_roc,
+                                         &conn.key_info_tft,
+                                         &exe_info);
+            if (!send_packet(client_fd, &to_client, "sid auth check"))
+                goto exit;
+        } break;
+
+        // sid auth check.
+        case 0x51: {
+            int tmp = 0;
+            unsigned int key_status = 0;
+            packet_read_value(key_status, &from_client, &tmp);
+            memcpy(&key_status, from_client.buf + 4, sizeof(key_status));
+            printf("INF / key status is %d.\n", key_status);
+            if (key_status != 0) {
+                printf("ERR / keys were not accepted.\n");
+                goto exit;
+            }
+        } break;
+
+        default: {
+            printf("unknown packet received %d.\n", from_client.buf[1]);
+            goto exit;
+        } break;
         }
     }
 
