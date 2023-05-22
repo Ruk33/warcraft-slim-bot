@@ -117,29 +117,6 @@ void packet_server_clan_member_list(struct packet *dest)
     packet_write_size(dest);
 }
 
-void packet_server_join_channel(struct packet *dest, struct channel_name *channel)
-{
-    assert(dest);
-    assert(channel);
-    
-    unsigned char packet_type = 12;
-    packet_write_header(dest, packet_type);
-    
-    int channel_len = (int) strnlen(channel->buf, sizeof(channel->buf));
-    if (channel_len > 0) {
-        unsigned char no_create_join[] = {2, 0, 0, 0};
-        packet_write_array(dest, no_create_join);
-    } else {
-        unsigned char first_join[] = {1, 0, 0, 0};
-        packet_write_array(dest, first_join);
-    }
-    if (channel_len) {
-        // +1 null terminator.
-        packet_write(dest, (unsigned char *) channel->buf, channel_len + 1);
-    }
-    packet_write_size(dest);
-}
-
 // note: should we change the weird name to something like
 // start game, create game, or...?
 void packet_server_start_adv_ex3(struct packet *dest)
@@ -293,5 +270,33 @@ void packet_server_sid_auth_account_logon_proof(struct packet *dest,
     packet_write_header(dest, packet_type);
 
     packet_write_array(dest, hp->buf);
+    packet_write_size(dest);
+}
+
+void packet_server_sid_net_game_port(struct packet *dest, unsigned short port)
+{
+    assert(dest);
+    unsigned char packet_type = 0x45;
+    packet_write_header(dest, packet_type);
+    packet_write_ex(dest, port);
+    packet_write_size(dest);
+}
+
+void packet_server_sid_enter_chat(struct packet *dest)
+{
+    assert(dest);
+    unsigned char packet_type = 0x0A;
+    packet_write_header(dest, packet_type);
+    packet_write_size(dest);
+}
+
+void packet_server_sid_join_channel(struct packet *dest, struct channel *channel)
+{
+    assert(dest);
+    unsigned char packet_type = 0x0C;
+    packet_write_header(dest, packet_type);
+    unsigned int flags = 0x00; // no create join.
+    packet_write_ex(dest, flags);
+    packet_write_string(dest, channel->buf);
     packet_write_size(dest);
 }

@@ -1,7 +1,7 @@
 struct packet;
 
 // todo: check if this is a good place for this struct.
-struct channel_name {
+struct channel {
     char buf[32]; // todo: check correct limit.
 };
 
@@ -64,8 +64,6 @@ void packet_server_friend_list(struct packet *dest);
 
 void packet_server_clan_member_list(struct packet *dest);
 
-void packet_server_join_channel(struct packet *dest, struct channel_name *channel);
-
 void packet_server_start_adv_ex3(struct packet *dest);
 
 void packet_server_sid_auth_check(struct packet *dest,
@@ -82,3 +80,9 @@ void packet_server_sid_auth_account_logon(struct packet *dest,
 
 void packet_server_sid_auth_account_logon_proof(struct packet *dest,
                                                 struct hashed_password *hp);
+
+void packet_server_sid_net_game_port(struct packet *dest, unsigned short port);
+
+void packet_server_sid_enter_chat(struct packet *dest);
+
+void packet_server_sid_join_channel(struct packet *dest, struct channel *channel);

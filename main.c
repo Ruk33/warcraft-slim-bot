@@ -288,15 +288,27 @@ int main(int argc, char **argv)
             }
 
             // net game port
+            // defines which port will the bot use for hosting games.
+            to_client.size = 0;
+            packet_server_sid_net_game_port(&to_client, 6113);
+            if (!send_packet(client_fd, &to_client, "sid net game port"))
+                goto exit;
             // enter chat
-            // friend list ?
-            // clan member list ?
-            // not sure we really need these last two.
+            to_client.size = 0;
+            packet_server_sid_enter_chat(&to_client);
+            if (!send_packet(client_fd, &to_client, "sid enter chat"))
+                goto exit;
+            // join channel.
+            struct channel to_join = {"Warcraft 3 Frozen Throne"};
+            to_client.size = 0;
+            packet_server_sid_join_channel(&to_client, &to_join);
+            if (!send_packet(client_fd, &to_client, "sid join channel"))
+                goto exit;
         } break;
 
         default: {
-            printf("ERR / the packet wont be handled, closing connection.\n");
-            goto exit;
+            printf("ERR / the packet wont be handled, ignoring...\n");
+            // goto exit;
         } break;
         }
     }
