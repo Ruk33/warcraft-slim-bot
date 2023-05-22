@@ -3,8 +3,9 @@ warcraft-slim-bot
 	it only support linux (ubuntu) and warcraft 3 1.27b.
 
 dependencies
-	- so far, only bncsutil is required.
-	- download it from https://github.com/BNETDocs/bncsutil
+	- download and install https://github.com/BNETDocs/bncsutil
+	- download and install https://github.com/ladislav-zezula/StormLib
+	- install libbz2-dev
 
 build
 	- run bash ./build.sh

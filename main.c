@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 
 #include <bncsutil/bncsutil.h>
+#include <StormLib.h>
 
 #include "include/packet.h"
 #include "include/packet_server.h"
@@ -304,6 +305,9 @@ int main(int argc, char **argv)
             packet_server_sid_join_channel(&to_client, &to_join);
             if (!send_packet(client_fd, &to_client, "sid join channel"))
                 goto exit;
+
+            // create a game.
+
         } break;
 
         default: {
