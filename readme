@@ -1,6 +1,6 @@
 warcraft-slim-bot
 	this is a very basic bot for hosting games in servers using pvpgn.
-	it only support linux and warcraft 3 1.27b.
+	it only support linux (ubuntu) and warcraft 3 1.27b.
 
 dependencies
 	- so far, only bncsutil is required.
@@ -18,3 +18,9 @@ set up server locally
 	- follow the installation steps from https://pvpgn.pro/pvpgn_installation.html
 	- git checkout 9ee400966001f3781e336b94649732afeda013da
 	- this will work on 1.27b
+
+credits
+	- ghostpp: https://github.com/Shiox/ghostpp
+	- aura bot: https://github.com/Josko/aura-bot
+	- bncsutil: https://github.com/BNETDocs/bncsutil
+	- bnetdocs: https://bnetdocs.org
