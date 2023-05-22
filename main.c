@@ -12,7 +12,6 @@
 
 #include "include/packet.h"
 #include "include/packet_server.h"
-#include "include/bsha1.h"
 
 struct server_name {
     char buf[256];
@@ -147,7 +146,7 @@ int main(int argc, char **argv)
     
     // auth.
     struct username username = {0};
-    struct bsha1_password password = {0};
+    struct password password = {0};
     strncpy(username.buf, argv[1], sizeof(username.buf) - 1);
     strncpy(password.buf, argv[2], sizeof(password.buf) - 1);
     strncpy(conn.cd_key_roc.buf, argv[3], sizeof(conn.cd_key_roc.buf) - 1);

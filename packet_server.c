@@ -2,7 +2,6 @@
 #include <string.h> // strnlen
 #include "include/packet.h"
 #include "include/packet_server.h"
-#include "include/bsha1.h"
 #include "include/game.h"
 
 static void packet_write_header(struct packet *dest, unsigned char packet_type)
@@ -74,22 +73,6 @@ void packet_server_account_logon(struct packet *dest, struct username *username)
     packet_write_array(dest, public_key);
     
     packet_write_array(dest, username->buf);
-    
-    packet_write_size(dest);
-}
-
-void packet_server_account_login_proof(struct packet *dest, struct bsha1_password *password)
-{
-    assert(dest);
-    
-    unsigned char sid_auth_account_login_proof = 84;
-    packet_write_header(dest, sid_auth_account_login_proof);
-    
-    struct bsha1_password hashed_password = {0};
-    bsha1_hash_password(&hashed_password, password);
-    
-    assert(sizeof(hashed_password.buf) >= 20);
-    packet_write(dest, (unsigned char *) hashed_password.buf, 20);
     
     packet_write_size(dest);
 }

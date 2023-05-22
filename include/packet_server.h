@@ -1,6 +1,4 @@
 struct packet;
-struct username;
-struct bsha1_password;
 
 // todo: check if this is a good place for this struct.
 struct channel_name {
@@ -40,6 +38,14 @@ struct server_key {
     unsigned char buf[32];
 };
 
+struct username {
+    char buf[32]; // todo > check if this is the correct limit.
+};
+
+struct password {
+    char buf[20];
+};
+
 struct hashed_password {
     char buf[20];
 };
@@ -49,8 +55,6 @@ void packet_server_init(struct packet *dest);
 void packet_server_ping(struct packet *dest, int ping);
 
 void packet_server_account_logon(struct packet *dest, struct username *username);
-
-void packet_server_account_login_proof(struct packet *dest, struct bsha1_password *password);
 
 void packet_server_net_game_port(struct packet *dest);
 
