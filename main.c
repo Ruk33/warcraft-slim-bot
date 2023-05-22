@@ -46,6 +46,8 @@ struct conn {
     struct cd_key_tft cd_key_tft;
     struct key_info_roc key_info_roc;
     struct key_info_tft key_info_tft;
+    struct salt salt;
+    struct server_key server_key;
 };
 
 #define packet_read_value(dest, packet, head) \
@@ -257,8 +259,44 @@ int main(int argc, char **argv)
                 goto exit;
         } break;
 
+        case 0x53: {
+            int head = 0;
+            unsigned int status = 0;
+            packet_read_value(status, &from_client, &head);
+            if (status != 0) {
+                printf("ERR / username seems to be incorrect %d.\n", status);
+                goto exit;
+            }
+            packet_read_value(conn.salt.buf, &from_client, &head);
+            packet_read_value(conn.server_key.buf, &from_client, &head);
+
+            struct hashed_password hp = {0};
+            hashPassword(password.buf, hp.buf);
+
+            to_client.size = 0;
+            packet_server_sid_auth_account_logon_proof(&to_client, &hp);
+            if (!send_packet(client_fd, &to_client, "sid auth account logon proof"))
+                goto exit;
+        } break;
+
+        case 0x54: {
+            int head = 0;
+            unsigned int status = 0;
+            packet_read_value(status, &from_client, &head);
+            if (status != 0) {
+                printf("ERR / password is incorrect\n");
+                goto exit;
+            }
+
+            // net game port
+            // enter chat
+            // friend list ?
+            // clan member list ?
+            // not sure we really need these last two.
+        } break;
+
         default: {
-            printf("INF / the packet wont be handled, closing connection.\n");
+            printf("ERR / the packet wont be handled, closing connection.\n");
             goto exit;
         } break;
         }

@@ -298,3 +298,17 @@ void packet_server_sid_auth_account_logon(struct packet *dest,
     packet_write_string(dest, username->buf);
     packet_write_size(dest);
 }
+
+
+void packet_server_sid_auth_account_logon_proof(struct packet *dest,
+                                                struct hashed_password *hp)
+{
+    assert(dest);
+    assert(hp);
+
+    unsigned char packet_type = 0x54;
+    packet_write_header(dest, packet_type);
+
+    packet_write_array(dest, hp->buf);
+    packet_write_size(dest);
+}

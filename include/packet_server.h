@@ -32,6 +32,18 @@ struct public_key {
     char buf[32];
 };
 
+struct salt {
+    unsigned char buf[32];
+};
+
+struct server_key {
+    unsigned char buf[32];
+};
+
+struct hashed_password {
+    char buf[20];
+};
+
 void packet_server_init(struct packet *dest);
 
 void packet_server_ping(struct packet *dest, int ping);
@@ -63,3 +75,6 @@ void packet_server_sid_auth_check(struct packet *dest,
 void packet_server_sid_auth_account_logon(struct packet *dest,
                                           struct username *username,
                                           struct public_key *public_key);
+
+void packet_server_sid_auth_account_logon_proof(struct packet *dest,
+                                                struct hashed_password *hp);
