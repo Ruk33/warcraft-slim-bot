@@ -103,6 +103,7 @@ int main(int argc, char **argv)
     char war[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/war3.exe";
     char storm_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Storm.dll";
     char game_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/game.dll";
+    char maps[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Maps/FrozenThrone/";
     struct exe_info exe_info = {0};
     unsigned int exe_version = 0;
 
@@ -166,6 +167,15 @@ int main(int argc, char **argv)
 
     struct public_key public_key = {0};
     nls_get_A(nls, public_key.buf);
+
+    // load echo isles map.
+    char map_path[128] = {0};
+    HANDLE map_mpq = 0;
+    snprintf(map_path, sizeof(map_path) - 1, "%s/(2)EchoIsles.w3x", maps);
+    if (!SFileOpenArchive(map_path, 0, MPQ_OPEN_FORCE_MPQ_V1, &map_mpq)) {
+        printf("ERR / unable to load map.\n");
+        goto exit;
+    }
 
     // send init packet.
     to_client.size = 0;
