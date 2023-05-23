@@ -30,6 +30,13 @@ struct value_string_formula {
     char buf[63];
 };
 
+// 128 mb in 1.27b
+#define max_map_size_in_byes (128000000)
+
+struct map {
+    unsigned char buf[max_map_size_in_byes];
+};
+
 struct conn {
     unsigned int logon_type;
     unsigned int server_token;
@@ -48,6 +55,7 @@ struct conn {
     struct key_info_tft key_info_tft;
     struct salt salt;
     struct server_key server_key;
+    struct map map;
 };
 
 #define packet_read_value(dest, packet, head) \
@@ -168,15 +176,6 @@ int main(int argc, char **argv)
     struct public_key public_key = {0};
     nls_get_A(nls, public_key.buf);
 
-    // load echo isles map.
-    char map_path[128] = {0};
-    HANDLE map_mpq = 0;
-    snprintf(map_path, sizeof(map_path) - 1, "%s/(2)EchoIsles.w3x", maps);
-    if (!SFileOpenArchive(map_path, 0, MPQ_OPEN_FORCE_MPQ_V1, &map_mpq)) {
-        printf("ERR / unable to load map.\n");
-        goto exit;
-    }
-
     // send init packet.
     to_client.size = 0;
     packet_server_init(&to_client);
@@ -269,6 +268,7 @@ int main(int argc, char **argv)
                 goto exit;
         } break;
 
+        // sid auth account logon.
         case 0x53: {
             int head = 0;
             unsigned int status = 0;
@@ -289,12 +289,13 @@ int main(int argc, char **argv)
                 goto exit;
         } break;
 
+        // sid account logon proof.
         case 0x54: {
             int head = 0;
             unsigned int status = 0;
             packet_read_value(status, &from_client, &head);
             if (status != 0) {
-                printf("ERR / password is incorrect\n");
+                printf("ERR / password is incorrect.\n");
                 goto exit;
             }
 
@@ -318,6 +319,35 @@ int main(int argc, char **argv)
 
             // create a game.
 
+            char map_path[128] = {0};
+            snprintf(map_path, sizeof(map_path) - 1, "%s/(2)EchoIsles.w3x", maps);
+
+            // load map file.
+            FILE *map_file = fopen(map_path, "rb");
+            if (!map_file) {
+                printf("ERR / unable to read %s.\n", map_path);
+                goto exit;
+            }
+            
+            fseek(map_file, 0, SEEK_END);
+            long map_file_size = ftell(map_file);
+            fseek(map_file, 0, SEEK_SET);
+            if (map_file_size > max_map_size_in_byes) {
+                printf("ERR / the map seems to be bigger than what's supported in 1.27b.\n");
+                goto exit;
+            }
+
+            fread(conn.map.buf, 1, map_file_size, map_file);
+            fclose(map_file);
+
+            // load map mpq
+            HANDLE map_mpq = 0;
+            if (!SFileOpenArchive(map_path, 0, MPQ_OPEN_FORCE_MPQ_V1, &map_mpq)) {
+                printf("ERR / unable to load mpq of %s.\n", map_path);
+                goto exit;
+            }
+
+            
         } break;
 
         default: {
