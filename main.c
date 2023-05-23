@@ -31,6 +31,16 @@ struct value_string_formula {
     char buf[63];
 };
 
+struct commonj {
+    unsigned char buf[512000]; // seems like the original size is 347kb
+    long size;
+};
+
+struct blizzardj {
+    unsigned char buf[512000]; // seems like the original size is 460kb
+    long size;
+};
+
 // 128 mb in 1.27b
 #define max_map_size_in_byes (128000000)
 
@@ -38,6 +48,8 @@ struct map {
     unsigned char buf[max_map_size_in_byes];
     long size;
     unsigned int crc;
+    struct commonj commonj;
+    struct blizzardj blizzardj;
 };
 
 struct conn {
@@ -67,6 +79,9 @@ struct conn {
 // +1 null terminator.
 #define packet_read_string(dest, packet, head) \
     (strncpy((dest), (char *) ((packet)->buf + 4 + *(head)), sizeof(dest) - 1), *(head) += strlen(dest) + 1)
+
+// won't work with signed types.
+#define ROTL(x,n) ((x)<<(n))|((x)>>(32-(n)))
 
 static void read_packet(struct packet *dest, int client_fd)
 {
@@ -104,6 +119,49 @@ static int send_packet(int client_fd, struct packet *src, char *packet_name)
 
     printf(" OK / packet '%s' was sent...\n", packet_name);
     return 1;
+}
+
+static int read_file(unsigned char *dest, long dest_size, char *path, long *size)
+{
+    assert(dest);
+    assert(path);
+    assert(size);
+
+    FILE *file = fopen(path, "rb");
+    if (!file)
+        return 0;
+    
+    fseek(file, 0, SEEK_END);
+    *size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    if (*size > dest_size)
+        return 0;
+
+    fread(dest, 1, *size, file);
+    fclose(file);
+    return 1;
+}
+
+static unsigned int xor_rotate_left(unsigned char *data, unsigned int length)
+{
+    assert(data);
+
+    unsigned int i = 0;
+    unsigned int val = 0;
+
+    if (length > 3) {
+        while (i < length - 3) {
+            val = ROTL(val ^ ((unsigned int) data[i] + (unsigned int) (data[i + 1] << 8) + (unsigned int) (data[i + 2] << 16) + (unsigned int) (data[i + 3] << 24)), 3);
+            i += 4;
+        }
+    }
+
+    while (i < length) {
+        val = ROTL(val ^ data[i], 3);
+        ++i;
+    }
+
+    return val;
 }
 
 int main(int argc, char **argv)
@@ -308,11 +366,13 @@ int main(int argc, char **argv)
             packet_server_sid_net_game_port(&to_client, 6113);
             if (!send_packet(client_fd, &to_client, "sid net game port"))
                 goto exit;
+
             // enter chat
             to_client.size = 0;
             packet_server_sid_enter_chat(&to_client);
             if (!send_packet(client_fd, &to_client, "sid enter chat"))
                 goto exit;
+
             // join channel.
             struct channel to_join = {"Warcraft 3 Frozen Throne"};
             to_client.size = 0;
@@ -321,27 +381,14 @@ int main(int argc, char **argv)
                 goto exit;
 
             // create a game.
-
             char map_path[128] = {0};
             snprintf(map_path, sizeof(map_path) - 1, "%s/(2)EchoIsles.w3x", maps);
 
             // load map file.
-            FILE *map_file = fopen(map_path, "rb");
-            if (!map_file) {
-                printf("ERR / unable to read %s.\n", map_path);
+            if (!read_file(conn.map.buf, sizeof(conn.map.buf), map_path, &conn.map.size)) {
+                printf("ERR / unable to read map %s.\n", map_path);
                 goto exit;
             }
-            
-            fseek(map_file, 0, SEEK_END);
-            conn.map.size = ftell(map_file);
-            fseek(map_file, 0, SEEK_SET);
-            if (conn.map.size > max_map_size_in_byes) {
-                printf("ERR / the map seems to be bigger than what's supported in 1.27b.\n");
-                goto exit;
-            }
-
-            fread(conn.map.buf, 1, conn.map.size, map_file);
-            fclose(map_file);
 
             // load map mpq
             HANDLE map_mpq = 0;
@@ -351,6 +398,69 @@ int main(int argc, char **argv)
             }
 
             conn.map.crc = crc_full(conn.map.buf, (unsigned int) conn.map.size);
+
+            char commonj_path[] = "/mnt/c/Users/franc/Downloads/common.j";
+            if (!read_file(conn.map.commonj.buf, sizeof(conn.map.commonj.buf), commonj_path, &conn.map.commonj.size)) {
+                printf("ERR / unable to read common.j\n");
+                goto exit;
+            }
+
+            char blizzardj_path[] = "/mnt/c/Users/franc/Downloads/blizzard.j";
+            if (!read_file(conn.map.blizzardj.buf, sizeof(conn.map.blizzardj.buf), blizzardj_path, &conn.map.blizzardj.size)) {
+                printf("ERR / unable to read blizzard.j\n");
+                goto exit;
+            }
+
+            unsigned int value = 0;
+
+            value = value ^ xor_rotate_left(conn.map.commonj.buf, conn.map.commonj.size);
+            // sha1 update
+
+            value = value ^ xor_rotate_left(conn.map.blizzardj.buf, conn.map.blizzardj.size);
+            // sha1 update
+
+            value = ROTL(value, 3);
+            value = ROTL(value ^ 0x03F1379E, 3);
+            // sha1 update, (uint8_t *) "\x9E\x37\xF1\x03", 4
+
+            char *files_in_mpq[] = {
+                "war3map.j",
+                "scripts\\war3map.j",
+                "war3map.w3e",
+                "war3map.wpm",
+                "war3map.doo",
+                "war3map.w3u",
+                "war3map.w3b",
+                "war3map.w3d",
+                "war3map.w3a",
+                "war3map.w3q",
+                0,
+            };
+            for (char **file_in_mpq = files_in_mpq; *file_in_mpq; file_in_mpq++) {
+                printf("INF / file in mpq %s.\n", *file_in_mpq);
+            }
+
+#if 0
+            HANDLE commonj_mpq = 0;
+            if (!SFileOpenFileEx(map_mpq, "Scripts\\common.j", 0, &commonj_mpq)) {
+                printf("ERR / unable to read common.j from map %s.\n", map_path);
+                goto exit;
+            }
+            unsigned int commonj_size = SFileGetFileSize(commonj_mpq, 0);
+            unsigned int commonj_read = 0;
+            if (!SFileReadFile(commonj_mpq, 
+                              conn.map.commonj.buf, 
+                              commonj_size, 
+                              &commonj_read, 
+                              0)) {
+                printf("ERR / unable to read the contents of common.j from map %s.\n", map_path);
+                goto exit;
+            }
+
+            SFileCloseFile(commonj_mpq);
+#endif
+            FILE *commonj_file = 0;
+
         } break;
 
         default: {
