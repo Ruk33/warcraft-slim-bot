@@ -436,31 +436,42 @@ int main(int argc, char **argv)
                 "war3map.w3q",
                 0,
             };
+            // int found_script = 0;
+
             for (char **file_in_mpq = files_in_mpq; *file_in_mpq; file_in_mpq++) {
-                printf("INF / file in mpq %s.\n", *file_in_mpq);
+                // 1mb for these internal files should be more than enough.
+                static unsigned char buf[1024000] = {0};
+                
+                printf("INF / trying to read file in mpq %s.\n", *file_in_mpq);
+
+                HANDLE mpq = 0;
+                if (!SFileOpenFileEx(map_mpq, *file_in_mpq, 0, &mpq)) {
+                    printf("INF / unable to open %s from map mpq."
+                           "maybe the file does not exist in the map.\n", 
+                           *file_in_mpq);
+                    continue;
+                }
+
+                unsigned int size = SFileGetFileSize(mpq, 0);
+                if (size > sizeof(buf)) {
+                    printf("ERR / %s seems to be way to big. this should not happen!\n", *file_in_mpq);
+                    goto exit;
+                }
+
+                DWORD bytes_read = 0;
+                if (!SFileReadFile(mpq, buf, size, &bytes_read, 0)) {
+                    printf("ERR / unable to read contents of %s from mpq.\n", *file_in_mpq);
+                    goto exit;
+                }
+
+                value = ROTL(value ^ xor_rotate_left(buf, bytes_read), 3);
+                // sha update...
+
+                SFileCloseFile(mpq);
+                printf(" OK / file %s was read successfuly.\n", *file_in_mpq);
             }
 
-#if 0
-            HANDLE commonj_mpq = 0;
-            if (!SFileOpenFileEx(map_mpq, "Scripts\\common.j", 0, &commonj_mpq)) {
-                printf("ERR / unable to read common.j from map %s.\n", map_path);
-                goto exit;
-            }
-            unsigned int commonj_size = SFileGetFileSize(commonj_mpq, 0);
-            unsigned int commonj_read = 0;
-            if (!SFileReadFile(commonj_mpq, 
-                              conn.map.commonj.buf, 
-                              commonj_size, 
-                              &commonj_read, 
-                              0)) {
-                printf("ERR / unable to read the contents of common.j from map %s.\n", map_path);
-                goto exit;
-            }
-
-            SFileCloseFile(commonj_mpq);
-#endif
-            FILE *commonj_file = 0;
-
+            printf(" OK / all files were read successfuly.\n");
         } break;
 
         default: {
