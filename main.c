@@ -50,6 +50,12 @@ struct map {
     unsigned int crc;
     struct commonj commonj;
     struct blizzardj blizzardj;
+    unsigned int width; // todo: check for proper type.
+    unsigned int height; // todo: check for proper type.
+    unsigned int options;
+    unsigned int number_players;
+    unsigned int filter_type;
+    unsigned int number_teams;
 };
 
 struct conn {
@@ -79,6 +85,13 @@ struct conn {
 // +1 null terminator.
 #define packet_read_string(dest, packet, head) \
     (strncpy((dest), (char *) ((packet)->buf + 4 + *(head)), sizeof(dest) - 1), *(head) += strlen(dest) + 1)
+
+#define mpq_read_value(dest, mpq, head) \
+    (memcpy(&(dest), (mpq) + *(head), sizeof(dest)), *(head) += sizeof(dest))
+
+// +1 null terminator.
+#define mpq_read_string(dest, mpq, head) \
+    (strncpy((dest), (char *) ((mpq) + *(head)), sizeof(dest) - 1), *(head) += strlen(dest) + 1)
 
 // won't work with signed types.
 #define ROTL(x,n) ((x)<<(n))|((x)>>(32-(n)))
@@ -169,10 +182,10 @@ int main(int argc, char **argv)
 #define port 6112
 #define server_address "127.0.0.1"
 
-    char war[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/war3.exe";
-    char storm_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Storm.dll";
-    char game_dll[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/game.dll";
-    char maps[] = "/mnt/c/Users/franc/Downloads/Warcraft III 1.27/Maps/FrozenThrone/";
+    char war[] = "/home/franco/Downloads/Warcraft III 1.27/war3.exe";
+    char storm_dll[] = "/home/franco/Downloads/Warcraft III 1.27/Storm.dll";
+    char game_dll[] = "/home/franco/Downloads/Warcraft III 1.27/game.dll";
+    char maps[] = "/home/franco/Downloads/Warcraft III 1.27/Maps/FrozenThrone/";
     struct exe_info exe_info = {0};
     unsigned int exe_version = 0;
 
@@ -399,18 +412,19 @@ int main(int argc, char **argv)
 
             conn.map.crc = crc_full(conn.map.buf, (unsigned int) conn.map.size);
 
-            char commonj_path[] = "/mnt/c/Users/franc/Downloads/common.j";
+            char commonj_path[] = "/home/franco/Downloads/common.j";
             if (!read_file(conn.map.commonj.buf, sizeof(conn.map.commonj.buf), commonj_path, &conn.map.commonj.size)) {
                 printf("ERR / unable to read common.j\n");
                 goto exit;
             }
 
-            char blizzardj_path[] = "/mnt/c/Users/franc/Downloads/blizzard.j";
+            char blizzardj_path[] = "/home/franco/Downloads/Blizzard.j";
             if (!read_file(conn.map.blizzardj.buf, sizeof(conn.map.blizzardj.buf), blizzardj_path, &conn.map.blizzardj.size)) {
                 printf("ERR / unable to read blizzard.j\n");
                 goto exit;
             }
 
+            // map crc
             unsigned int value = 0;
 
             value = value ^ xor_rotate_left(conn.map.commonj.buf, conn.map.commonj.size);
@@ -469,6 +483,186 @@ int main(int argc, char **argv)
 
                 SFileCloseFile(mpq);
                 printf(" OK / file %s was read successfuly.\n", *file_in_mpq);
+            }
+
+            {
+                // todo: confirm if this is big enough.
+                static unsigned char buf[1024000] = {0};
+
+                HANDLE mpq = 0;
+
+                if (!SFileOpenFileEx(map_mpq, "war3map.w3i", 0, &mpq)) {
+                    printf("ERR / unable to read war3map.w3i.\n");
+                    goto exit;
+                }
+
+                unsigned int size = SFileGetFileSize(mpq, 0);
+                if (size > sizeof(buf)) {
+                    printf("ERR / war3map.w3i seems to be way to big. this should not happen!\n");
+                    goto exit;
+                }
+
+                DWORD bytes_read = 0;
+                if (!SFileReadFile(mpq, buf, size, &bytes_read, 0)) {
+                    printf("ERR / unable to read contents of war3map.w3i from mpq.\n");
+                    goto exit;
+                }
+
+                unsigned int head = 0;
+
+                unsigned int format = 0;
+                mpq_read_value(format, buf, &head);
+                printf("INF / format is %u\n", format);
+
+                unsigned int number_saves = 0;
+                mpq_read_value(number_saves, buf, &head);
+                printf("INF / number saves is %u\n", number_saves);
+
+                unsigned int editor_version = 0;
+                mpq_read_value(editor_version, buf, &head);
+                printf("INF / editor version is %u\n", editor_version);
+
+                char map_name[256] = {0};
+                mpq_read_string(map_name, buf, &head);
+                printf("INF / map name is %s\n", map_name);
+
+                char map_author[256] = {0};
+                mpq_read_string(map_author, buf, &head);
+                printf("INF / map author is %s\n", map_author);
+
+                char map_description[256] = {0};
+                mpq_read_string(map_description, buf, &head);
+                printf("INF / map description is %s\n", map_description);
+
+                char players_recommended[256] = {0};
+                mpq_read_string(players_recommended, buf, &head);
+                printf("INF / players recommended is %s\n", players_recommended);
+
+                head += 32; // skip camera bounds.
+                head += 16; // skip camera bounds complements.
+
+                unsigned width = 0;
+                mpq_read_value(width, buf, &head);
+                printf("INF / width is %u\n", width);
+
+                unsigned height = 0;
+                mpq_read_value(height, buf, &head);
+                printf("INF / height is %u\n", height);
+
+                unsigned flags = 0;
+                mpq_read_value(flags, buf, &head);
+                printf("INF / flags is %u\n", flags);
+
+                head += 1; // skip map main ground type.
+                head += 4; // skip campaing background number if format == 18, if format == 25 loading screen number.
+
+                if (format == 25) {
+                    char loading_screen[256] = {0};
+                    mpq_read_string(loading_screen, buf, &head);
+                    printf("INF / loading screen is %s\n", loading_screen);
+                }
+
+                char loading_screen_text[256] = {0};
+                mpq_read_string(loading_screen_text, buf, &head);
+                printf("INF / loading screen text is %s\n", loading_screen_text);
+                
+                char loading_screen_title[256] = {0};
+                mpq_read_string(loading_screen_title, buf, &head);
+                printf("INF / loading screen title is %s\n", loading_screen_title);
+
+                char loading_screen_subtitle[256] = {0};
+                mpq_read_string(loading_screen_subtitle, buf, &head);
+                printf("INF / loading screen subtitle is %s\n", loading_screen_subtitle);
+
+                head += 4; // skip map loading screen if format == 18, otherwise, user game data set.
+
+                if (format == 25) {
+                    char prologue_screen_path[256] = {0};
+                    mpq_read_string(prologue_screen_path, buf, &head);
+                    printf("INF / prologue screen path is %s\n", prologue_screen_path);
+                }
+
+                char prologue_screen_text[256] = {0};
+                mpq_read_string(prologue_screen_text, buf, &head);
+                printf("INF / prologue screen text is %s\n", prologue_screen_text);
+                
+                char prologue_screen_title[256] = {0};
+                mpq_read_string(prologue_screen_title, buf, &head);
+                printf("INF / prologue screen title is %s\n", prologue_screen_title);
+
+                char prologue_screen_subtitle[256] = {0};
+                mpq_read_string(prologue_screen_subtitle, buf, &head);
+                printf("INF / prologue screen subtitle is %s\n", prologue_screen_subtitle);
+
+                if (format == 25) {
+                    head += 4; // terrain fog
+                    head += 4; // fog start z height
+                    head += 4; // fog end z height
+                    head += 4; // fog density
+                    head += 1; // fog red value
+                    head += 1; // fog green value
+                    head += 1; // fog blue value
+                    head += 1; // fog alpha value
+                    head += 4; // global weather id
+
+                    char sound_environment[256] = {0};
+                    mpq_read_string(sound_environment, buf, &head);
+
+                    head += 1; // tileset id
+                    head += 1; // custom water red
+                    head += 1; // custom water green
+                    head += 1; // custom water blue
+                    head += 1; // custom water alpha
+                }
+
+                unsigned int number_players = 0;
+                mpq_read_value(number_players, buf, &head);
+                printf("INF / numberplayers is %u\n", number_players);
+
+                for (unsigned int i = 0; i < number_players; i++) {
+                    unsigned int color = 0;
+                    mpq_read_value(color, buf, &head);
+                    printf("INF / player %d - color is %u\n", i + 1, color);
+
+                    unsigned int status = 0;
+                    mpq_read_value(status, buf, &head);
+                    printf("INF / player %d - status is %u\n", i + 1, status);
+
+                    unsigned int race = 0;
+                    mpq_read_value(race, buf, &head);
+                    printf("INF / player %d - race is %u\n", i + 1, race);
+
+                    head += 4; // fixed start position.
+
+                    char player_name[256] = {0};
+                    mpq_read_string(player_name, buf, &head);
+                    printf("INF / player %d - name is %s\n", i + 1, player_name);
+
+                    head += 4; // start position x.
+                    head += 4; // start position y.
+                    head += 4; // ally low priority.
+                    head += 4; // ally high priority.
+                }
+
+                unsigned int number_teams = 0;
+                mpq_read_value(number_teams, buf, &head);
+                printf("INF / number of teams is %u\n", number_teams);
+
+                for (unsigned int i = 0; i < number_teams; i++) {
+                    unsigned int flags = 0;
+                    mpq_read_value(flags, buf, &head);
+                    printf("INF / team %d - flags is %u\n", i + 1, flags);
+
+                    unsigned int player_mask = 0;
+                    mpq_read_value(player_mask, buf, &head);
+                    printf("INF / team %d - player mask is %u\n", i + 1, player_mask);
+
+                    char team_name[256] = {0};
+                    mpq_read_string(team_name, buf, &head);
+                    printf("INF / team %d - name is %s\n", i + 1, team_name);
+                }
+
+                SFileCloseFile(mpq);
             }
 
             printf(" OK / all files were read successfuly.\n");
