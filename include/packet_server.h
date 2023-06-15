@@ -1,54 +1,10 @@
 struct packet;
-
-// todo: check if this is a good place for this struct.
-struct channel {
-    char buf[32]; // todo: check correct limit.
-};
-
-struct cd_key_roc {
-    char buf[27]; // seems like the size is 26, plus null terminator.
-};
-
-struct cd_key_tft {
-    char buf[27]; // seems like the size is 26, plus null terminator.
-};
-
-struct key_info_roc {
-    char buf[20];
-};
-
-struct key_info_tft {
-    char buf[20];
-};
-
-struct exe_info {
-    // including null terminator.
-    char buf[34];
-};
-
-struct public_key {
-    char buf[32];
-};
-
-struct salt {
-    unsigned char buf[32];
-};
-
-struct server_key {
-    unsigned char buf[32];
-};
-
-struct username {
-    char buf[32]; // todo > check if this is the correct limit.
-};
-
-struct password {
-    char buf[20];
-};
-
-struct hashed_password {
-    char buf[20];
-};
+struct username;
+struct key_info_roc;
+struct key_info_tft;
+struct exe_info;
+struct public_key;
+struct map;
 
 void packet_server_init(struct packet *dest);
 
@@ -64,7 +20,7 @@ void packet_server_friend_list(struct packet *dest);
 
 void packet_server_clan_member_list(struct packet *dest);
 
-void packet_server_start_adv_ex3(struct packet *dest);
+void packet_server_start_adv_ex3(struct packet *dest, struct map *map);
 
 void packet_server_sid_auth_check(struct packet *dest,
                                   unsigned int client_token,

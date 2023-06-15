@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h> // strnlen
+#include "include/types.h"
 #include "include/packet.h"
 #include "include/packet_server.h"
 #include "include/game.h"
@@ -119,91 +120,68 @@ void packet_server_clan_member_list(struct packet *dest)
 
 // note: should we change the weird name to something like
 // start game, create game, or...?
-void packet_server_start_adv_ex3(struct packet *dest)
+void packet_server_start_adv_ex3(struct packet *dest,
+                                 struct map *map)
 {
     assert(dest);
-    unsigned char packet_type = 28;
+    assert(map);
+    
+    unsigned char packet_type = 0x1C;
     packet_write_header(dest, packet_type);
     
-    int game_state = (int) game_public;
-    packet_write_ex(dest, game_state);
+    /* unsigned */ char stat_string[512] = {0};
     
-    int up_time = 0;
-    packet_write_ex(dest, up_time);
+    unsigned int map_flags = 0;
+    map_flags |= 0x00000001; // speed normal
+    map_flags |= 0x00000800; // visibility default?
+    map_flags |= 0x00003000; // observers allowed
     
-    int game_map_type = game_map_type_unknown | game_map_type_melee;
-    packet_write_ex(dest, game_map_type);
+    unsigned int stat_string_tail = 0;
+    memcpy(stat_string + stat_string_tail, 
+           &map_flags, 
+           sizeof(map_flags));
+    stat_string_tail += sizeof(map_flags);
+    stat_string_tail++; // null terminator.
     
-    int unknown = 0;
-    packet_write_ex(dest, unknown);
+    memcpy(stat_string + stat_string_tail, 
+           &map->width, 
+           sizeof(map->width));
+    stat_string_tail += sizeof(map->width);
     
-    unsigned char custom_game[] = {0, 0, 0, 0};
-    packet_write_array(dest, custom_game);
+    memcpy(stat_string + stat_string_tail, 
+           &map->height, 
+           sizeof(map->height));
+    stat_string_tail += sizeof(map->height);
     
-    char name[] = "testing!";
-    packet_write_array(dest, name);
+    memcpy(stat_string + stat_string_tail, 
+           &map->crc, 
+           sizeof(map->crc));
+    stat_string_tail += sizeof(map->crc);
     
-    unsigned char password = 0;
-    packet_write_ex(dest ,password);
+    strcpy(stat_string + stat_string_tail, 
+           map->path);
+    stat_string_tail += strlen(map->path);
+    stat_string_tail++; // null terminator.
     
-    unsigned char slots_free = 110;
-    packet_write_ex(dest, slots_free);
+    char host_name[] = "ruke";
+    strcpy(stat_string + stat_string_tail, 
+           host_name);
+    stat_string_tail += strlen(host_name);
+    stat_string_tail++; // null terminator.
     
-    // check what am i supposed to send here.
-    char host_counter[] = "00000000";
-    packet_write(dest, (unsigned char *) host_counter, sizeof(host_counter) - 1);
-    
-    int stat_start = dest->size;
-    
-    unsigned char map_flags = 1;
-    packet_write_ex(dest, map_flags);
-    
-    unsigned char empty = 0;
-    packet_write_ex(dest, empty);
-    
-    unsigned char map_width = 128;
-    packet_write_ex(dest, map_width);
-    
-    unsigned char map_height = 96;
-    packet_write_ex(dest, map_height);
-    
-    unsigned char map_crc = 0;
-    packet_write_ex(dest, map_crc);
-    
-    char map_path[] = "./(2)EchoIsles.w3x";
-    packet_write_array(dest, map_path);
-    
-    char host_name[] = "testruke";
-    packet_write_array(dest, host_name);
-    
-    packet_write_ex(dest, empty);
-    
-    // echo isles sha1.
-    char sha1[] = "a98ac683c62bd3d45e1c43535ca75f6599aa60cf";
-    packet_write_array(dest, sha1);
+    memcpy(stat_string + stat_string_tail, 
+           map->sha1.digest.buf, 
+           sizeof(map->sha1.digest.buf));
+    stat_string_tail += sizeof(map->sha1.digest.buf);
     
     // encode stat string.
+    unsigned char encoded_stat[512] = {0};
     unsigned char mask = 1;
-    int size = dest->size;
-    for (int i = stat_start; i < size; i++) {
-        if (dest->buf[i] % 2 == 0) {
-            dest->buf[i] = dest->buf[i] + 1;
-        } else {
-            mask |= 1 << (((i - stat_start) % 7) + 1);
-        }
-        if ((i - stat_start) % 7 == 6 || i == size - 1) {
-            // manually add mask. double check since this is
-            // probably wrong.
-            int index = size - 1 - ((i - stat_start) % 7);
-            unsigned char tmp = dest->buf[index];
-            dest->buf[index] = mask;
-            dest->buf[index + 1] = tmp;
-            dest->size++;
-            mask = 1;
-        }
+    
+    for (unsigned int i = 0; i < stat_string_tail; ++i) {
+        // if ((stat_string[i] % 2) == 0)
+        // ;
     }
-    // null terminator from stat "string".
-    packet_write_ex(dest, empty);
     
     packet_write_size(dest);
 }
@@ -219,27 +197,27 @@ void packet_server_sid_auth_check(struct packet *dest,
     assert(dest);
     assert(key_info_roc);
     assert(key_info_tft);
-
+    
     unsigned char packet_type = 81;
     packet_write_header(dest, packet_type);
-
+    
     packet_write_ex(dest, client_token);
     packet_write_ex(dest, exe_version);
     packet_write_ex(dest, exe_version_hash);
-
+    
     unsigned int keys_count = 2;
     packet_write_ex(dest, keys_count);
-
+    
     unsigned int spawn = 0;
     packet_write_ex(dest, spawn);
-
+    
     packet_write_array(dest, key_info_roc->buf);
     packet_write_array(dest, key_info_tft->buf);
     packet_write_array(dest, exe_info->buf);
-
+    
     char owner[] = "ruke";
     packet_write_array(dest, owner);
-
+    
     packet_write_size(dest);
 }
 
@@ -250,10 +228,10 @@ void packet_server_sid_auth_account_logon(struct packet *dest,
     assert(dest);
     assert(username);
     assert(public_key);
-
+    
     unsigned char packet_type = 0x53;
     packet_write_header(dest, packet_type);
-
+    
     packet_write_array(dest, public_key->buf);
     packet_write_string(dest, username->buf);
     packet_write_size(dest);
@@ -265,10 +243,10 @@ void packet_server_sid_auth_account_logon_proof(struct packet *dest,
 {
     assert(dest);
     assert(hp);
-
+    
     unsigned char packet_type = 0x54;
     packet_write_header(dest, packet_type);
-
+    
     packet_write_array(dest, hp->buf);
     packet_write_size(dest);
 }

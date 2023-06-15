@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h> // memcpy, memset
+#include "include/types.h"
 #include "include/sha1.h"
 
 typedef union {
@@ -7,7 +8,7 @@ typedef union {
     unsigned int l[16];
 } SHA1_WORKSPACE_BLOCK;
 
-// Rotate x bits to the left
+// rotate x bits to the left
 #define ROL32(value, bits) (((value)<<(bits))|((value)>>(32-(bits))))
 
 // little endian
@@ -31,6 +32,8 @@ static void transform(unsigned int *state, unsigned char *buffer)
 	SHA1_WORKSPACE_BLOCK* block = 0;
 	static unsigned char workspace[64] = {0};
 	block = (SHA1_WORKSPACE_BLOCK *)workspace;
+    
+    // dont like this.
 	memcpy(block, buffer, 64);
     
 	// Copy state[] to working vars
@@ -71,7 +74,6 @@ static void transform(unsigned int *state, unsigned char *buffer)
     
 	// Wipe variables
 	a = 0; b = 0; c = 0; d = 0; e = 0;
-    // again, is this required?
 }
 
 void sha1_update(struct sha1 *sha1, unsigned char *data, unsigned int len)
@@ -106,7 +108,6 @@ void sha1_update(struct sha1 *sha1, unsigned char *data, unsigned int len)
         
 		j = 0;
 	} else {
-        // is this required?
         i = 0;
     }
     
@@ -132,16 +133,11 @@ void sha1_final(struct sha1 *sha1)
 	sha1_update(sha1, finalcount, 8); // Cause a SHA1Transform()
     
 	for (i = 0; i < 20; i++)
-	{
-		sha1->digest[i] = (unsigned char)((sha1->state[i >> 2] >> ((3 - (i & 3)) * 8) ) & 255);
-	}
+		sha1->digest.buf[i] = (unsigned char)((sha1->state[i >> 2] >> ((3 - (i & 3)) * 8) ) & 255);
     
-    // todo: make it better.
 	// Wipe variables for security reasons
 	i = 0;
-    memset(sha1->buffer, 0, 64);
-	memset(sha1->state, 0, 20);
-	memset(sha1->count, 0, 8);
+    *sha1 = (struct sha1) {0};
 	memset(finalcount, 0, 8);
     
 	transform(sha1->state, sha1->buffer);
@@ -151,7 +147,5 @@ void sha1_get_hash(struct sha1_hash *dest, struct sha1 *src)
 {
     assert(dest);
     assert(src);
-    // todo: change digest to be sha1_hash.
-    memcpy(dest->buf, src->digest, 20);
+    *dest = src->digest;
 }
-
