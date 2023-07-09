@@ -647,10 +647,12 @@ int main(int argc, char **argv)
                 
                 printf(" OK / all files were read successfuly.\n");
                 
+#if 0
                 to_client.size = 0;
                 packet_server_start_adv_ex3(&to_client, &conn.map);
                 if (!send_packet(client_fd, &to_client, "start adv ex3 auth check"))
                     goto exit;
+#endif
             } break;
             
             // SID_STARTADVEX3
@@ -659,6 +661,30 @@ int main(int argc, char **argv)
                 unsigned int status = 0;
                 packet_read_value(status, &from_client, &head);
                 printf("status is %u\n", status);
+            } break;
+            
+            // chat
+            case 0x0f: {
+                unsigned int head = 0;
+                unsigned int event = 0;
+                unsigned int user_flag = 0;
+                unsigned int ping = 0;
+                unsigned int ip = 0;
+                unsigned int account_number = 0;
+                unsigned int registration = 0;
+                char username[64] = {0};
+                char text[256] = {0};
+                
+                packet_read_value(event, &from_client, &head);
+                packet_read_value(user_flag, &from_client, &head);
+                packet_read_value(ping, &from_client, &head);
+                packet_read_value(ip, &from_client, &head);
+                packet_read_value(account_number, &from_client, &head);
+                packet_read_value(registration, &from_client, &head);
+                packet_read_string(username, &from_client, &head);
+                packet_read_string(text, &from_client, &head);
+                
+                printf("chat: '%s': '%s'\n", username, text);
             } break;
             
             default: {

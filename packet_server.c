@@ -15,6 +15,8 @@ static void packet_write_header(struct packet *dest, unsigned char packet_type)
     
     packet_write_ex(dest, packet_type);
     
+    // make temp. room for packet size. it will
+    // later be set by packet_write_size.
     short packet_size = 0;
     packet_write_ex(dest, packet_size);
 }
@@ -29,27 +31,33 @@ void packet_server_init(struct packet *dest)
     unsigned char platform_id[] = {54, 56, 88, 73}; // "IX86"
     // unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
     unsigned int product_id = 0x1E;
-    unsigned char version_id[] = {27, 0, 0, 0};
-    unsigned char language[] = {83, 85, 110, 101}; // "enUS"
+    // unsigned char version_id[] = {27, 0, 0, 0};
+    // unsigned char language[] = {83, 85, 110, 101}; // "enUS"
+    unsigned char language[] = {0, 0, 0, 0};
     unsigned char local_ip[] = {127, 0, 0, 1};
     unsigned char time_zone_bias[] = {60, 0, 0, 0}; // 60 minutes (GMT +0100) but this is probably -0100
     
     packet_write_array(dest, protocol_id);
     packet_write_array(dest, platform_id);
     packet_write_ex(dest, product_id);
-    packet_write_array(dest, version_id);
+    unsigned int version_id = 0x15;
+    packet_write_ex(dest, version_id);
+    // packet_write_array(dest, version_id);
     packet_write_array(dest, language);
     packet_write_array(dest, local_ip);
     packet_write_array(dest, time_zone_bias);
     
-    int locale_id = 1031; // not sure, but let's see if it works with it.
+    // int locale_id = 1031; // not sure, but let's see if it works with it.
+    int locale_id = 0;
     packet_write_ex(dest, locale_id);
     packet_write_ex(dest, locale_id);
     
-    char country_abbr[] = "DEU";
+    // char country_abbr[] = "DEU";
+    char country_abbr[] = "enUS";
     packet_write_array(dest, country_abbr);
     
-    char country[] = "Germany";
+    char country[] = "United States";
+    // char country[] = "Germany";
     packet_write_array(dest, country);
     
     packet_write_size(dest);
@@ -132,7 +140,7 @@ void packet_server_start_adv_ex3(struct packet *dest,
     unsigned char packet_type = 0x1C;
     packet_write_header(dest, packet_type);
     
-    /* unsigned */ char stat_string[512] = {0};
+    char stat_string[512] = {0};
     
     unsigned int map_flags = 0;
     map_flags |= 0x00000001; // speed normal
@@ -140,42 +148,40 @@ void packet_server_start_adv_ex3(struct packet *dest,
     map_flags |= 0x00003000; // observers allowed
     
     unsigned int stat_string_tail = 0;
-    memcpy(stat_string + stat_string_tail, 
-           &map_flags, 
-           sizeof(map_flags));
+    memcpy(stat_string + stat_string_tail, &map_flags, sizeof(map_flags));
     stat_string_tail += sizeof(map_flags);
     stat_string_tail++; // null terminator.
     
-    memcpy(stat_string + stat_string_tail, 
-           &map->width, 
-           sizeof(map->width));
-    stat_string_tail += sizeof(map->width);
+    unsigned short map_width = map->width;
+    memcpy(stat_string + stat_string_tail, &map_width, sizeof(map_width));
+    stat_string_tail += sizeof(map_width);
+    // memcpy(stat_string + stat_string_tail, &map->width, sizeof(map->width));
+    // stat_string_tail += sizeof(map->width);
     
-    memcpy(stat_string + stat_string_tail, 
-           &map->height, 
-           sizeof(map->height));
-    stat_string_tail += sizeof(map->height);
+    unsigned short map_height = map->height;
+    memcpy(stat_string + stat_string_tail, &map_height, sizeof(map_height));
+    stat_string_tail += sizeof(map_height);
+    // memcpy(stat_string + stat_string_tail, &map->height, sizeof(map->height));
+    // stat_string_tail += sizeof(map->height);
     
-    memcpy(stat_string + stat_string_tail, 
-           &map->crc, 
-           sizeof(map->crc));
+    memcpy(stat_string + stat_string_tail, &map->crc, sizeof(map->crc));
     stat_string_tail += sizeof(map->crc);
     
-    strcpy(stat_string + stat_string_tail, 
-           map->path);
-    stat_string_tail += strlen(map->path);
+    char map_path[] = "Maps/FrozenThrone/(2)EchoIsles.w3x";
+    strcpy(stat_string + stat_string_tail, map_path);
+    stat_string_tail += strlen(map_path);
     stat_string_tail++; // null terminator.
+    // strcpy(stat_string + stat_string_tail, map->path);
+    // stat_string_tail += strlen(map->path);
+    // stat_string_tail++; // null terminator.
     
     char host_name[] = "ruke";
-    strcpy(stat_string + stat_string_tail, 
-           host_name);
+    strcpy(stat_string + stat_string_tail, host_name);
     stat_string_tail += strlen(host_name);
     stat_string_tail++; // null terminator.
-    // stat_string_tail++; // extra separator?
+    stat_string_tail++; // extra separator?
     
-    memcpy(stat_string + stat_string_tail, 
-           map->sha1.digest.buf, 
-           sizeof(map->sha1.digest.buf));
+    memcpy(stat_string + stat_string_tail, map->sha1.digest.buf, sizeof(map->sha1.digest.buf));
     stat_string_tail += sizeof(map->sha1.digest.buf);
     
     printf("stat string ");
@@ -183,6 +189,7 @@ void packet_server_start_adv_ex3(struct packet *dest,
         printf("%c", stat_string[i]);
     printf("\n");
     
+#if 1
     // encode stat string.
     unsigned char encoded_stat[512] = {0};
     unsigned char mask = 1;
@@ -195,8 +202,8 @@ void packet_server_start_adv_ex3(struct packet *dest,
             mask |= 1 << ((i % 7) + 1);
         }
         if (i % 7 == 6 || i == stat_string_tail - 1) {
-            // int index = i - 1 - (i % 7);
-            int index = i - (i % 7);
+            int index = i - 1 - (i % 7);
+            // int index = i - (i % 7);
             unsigned char prev = encoded_stat[index];
             encoded_stat[index] = mask;
             index++;
@@ -213,6 +220,34 @@ void packet_server_start_adv_ex3(struct packet *dest,
     for (unsigned int i = 0; i < stat_string_tail; i++)
         printf("%c", encoded_stat[i]);
     printf("\n");
+#else
+    unsigned char result[512] = {0};
+    unsigned char mask = 1;
+    unsigned int resultIndex = 0;
+    unsigned int i;
+    unsigned int size = stat_string_tail;
+    unsigned char *data = (unsigned char *)stat_string;
+    
+    for (i = 0; i < size; ++i) {
+        if ((data[i] % 2) == 0)
+            result[resultIndex++] = data[i] + 1;
+        else {
+            result[resultIndex++] = data[i];
+            mask |= 1 << ((i % 7) + 1);
+        }
+        
+        if (i % 7 == 6 || i == size - 1) {
+            unsigned int insertIndex = resultIndex - 1 - (i % 7);
+            unsigned int j;
+            for (j = resultIndex - 1; j > insertIndex; --j) {
+                result[j] = result[j - 1];
+            }
+            result[insertIndex] = mask;
+            mask = 1;
+            resultIndex++;
+        }
+    }
+#endif
     
     unsigned char state = 16; // 16 public, 17 private, 18 close
     packet_write_ex(dest, state);
@@ -221,7 +256,7 @@ void packet_server_start_adv_ex3(struct packet *dest,
     packet_write_ex(dest, state_continued);
     packet_write_ex(dest, state_continued);
     
-    unsigned int up_time = 42;
+    unsigned int up_time = 1;
     packet_write_ex(dest, up_time);
     
     unsigned int map_type = 1; // MAPGAMETYPE_UNKNOWN0;
@@ -243,14 +278,18 @@ void packet_server_start_adv_ex3(struct packet *dest,
     packet_write_ex(dest, slots_free);
     
     // write host counter...
-    unsigned int host_counter = 0;
-    char host_counter_hex[8] = {0};
-    sprintf(host_counter_hex, "%07x", host_counter);
-    packet_write_array(dest, host_counter_hex);
+    unsigned int host_counter = ((0 & 0x0FFFFFFF) | (1 << 28));
+    char host_counter_hex[9] = {0};
+    sprintf(host_counter_hex, "%08x", host_counter);
+    // packet_write_array(dest, host_counter_hex);
+    // packet_write(dest, (unsigned char *) host_counter_hex, 8);
+    for (int i = 8; 0 <= i; i--)
+        packet_write(dest, (unsigned char *) host_counter_hex+i, 1);
     printf("%s\n", host_counter_hex);
     
     // +1, null terminator.
-    packet_write(dest, encoded_stat, stat_string_tail);
+    // packet_write(dest, result, size+1);
+    packet_write(dest, encoded_stat, stat_string_tail + 1);
     // packet_write(dest, (unsigned char *)stat_string, stat_string_tail);
     
     packet_write_size(dest);
