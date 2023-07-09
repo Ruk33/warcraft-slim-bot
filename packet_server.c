@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h> // strnlen
+#include <stdio.h> // sprintf
 #include "include/types.h"
 #include "include/packet.h"
 #include "include/packet_server.h"
@@ -54,12 +55,14 @@ void packet_server_init(struct packet *dest)
     packet_write_size(dest);
 }
 
-void packet_server_ping(struct packet *dest, int ping)
+void packet_server_ping(struct packet *dest, unsigned int ping)
 {
     assert(dest);
     unsigned char packet_type = 37;
     packet_write_header(dest, packet_type);
     packet_write_ex(dest, ping);
+    // unsigned char zero = 0;
+    // packet_write_ex(dest, zero);
     packet_write_size(dest);
 }
 
@@ -168,20 +171,87 @@ void packet_server_start_adv_ex3(struct packet *dest,
            host_name);
     stat_string_tail += strlen(host_name);
     stat_string_tail++; // null terminator.
+    // stat_string_tail++; // extra separator?
     
     memcpy(stat_string + stat_string_tail, 
            map->sha1.digest.buf, 
            sizeof(map->sha1.digest.buf));
     stat_string_tail += sizeof(map->sha1.digest.buf);
     
+    printf("stat string ");
+    for (unsigned int i = 0; i < stat_string_tail; i++)
+        printf("%c", stat_string[i]);
+    printf("\n");
+    
     // encode stat string.
     unsigned char encoded_stat[512] = {0};
     unsigned char mask = 1;
     
-    for (unsigned int i = 0; i < stat_string_tail; ++i) {
-        // if ((stat_string[i] % 2) == 0)
-        // ;
+    for (unsigned int i = 0; i < stat_string_tail; i++) {
+        if ((stat_string[i] % 2) == 0)
+            encoded_stat[i] = stat_string[i] + 1;
+        else {
+            encoded_stat[i] = stat_string[i];
+            mask |= 1 << ((i % 7) + 1);
+        }
+        if (i % 7 == 6 || i == stat_string_tail - 1) {
+            // int index = i - 1 - (i % 7);
+            int index = i - (i % 7);
+            unsigned char prev = encoded_stat[index];
+            encoded_stat[index] = mask;
+            index++;
+            while (index < 512) {
+                unsigned char tmp = encoded_stat[index];
+                encoded_stat[index] = prev;
+                prev = tmp;
+                index++;
+            }
+            mask = 1;
+        }
     }
+    printf("encoded stat string ");
+    for (unsigned int i = 0; i < stat_string_tail; i++)
+        printf("%c", encoded_stat[i]);
+    printf("\n");
+    
+    unsigned char state = 16; // 16 public, 17 private, 18 close
+    packet_write_ex(dest, state);
+    unsigned char state_continued = 0;
+    packet_write_ex(dest, state_continued);
+    packet_write_ex(dest, state_continued);
+    packet_write_ex(dest, state_continued);
+    
+    unsigned int up_time = 42;
+    packet_write_ex(dest, up_time);
+    
+    unsigned int map_type = 1; // MAPGAMETYPE_UNKNOWN0;
+    packet_write_ex(dest, map_type);
+    
+    unsigned char unknown[] = {255, 3, 0, 0};
+    packet_write_array(dest, unknown);
+    
+    unsigned char custom_game[] = {0, 0, 0, 0};
+    packet_write_array(dest, custom_game);
+    
+    char game_name[] = "testing";
+    packet_write_array(dest, game_name);
+    
+    unsigned char password = 0;
+    packet_write_ex(dest, password);
+    
+    unsigned char slots_free = 110;
+    packet_write_ex(dest, slots_free);
+    
+    // write host counter...
+    unsigned int host_counter = 0;
+    char host_counter_hex[8] = {0};
+    sprintf(host_counter_hex, "%07x", host_counter);
+    packet_write_array(dest, host_counter_hex);
+    printf("%s\n", host_counter_hex);
+    
+    // +1, null terminator.
+    packet_write(dest, encoded_stat, stat_string_tail);
+    // packet_write(dest, (unsigned char *)stat_string, stat_string_tail);
     
     packet_write_size(dest);
 }

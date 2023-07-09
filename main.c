@@ -225,9 +225,10 @@ int main(int argc, char **argv)
             
             // ping.
             case 0x25: {
+                unsigned int head = 0;
                 unsigned int ping = 0;
-                memcpy(&ping, from_client.buf + 4, sizeof(ping));
-                printf("INF / ping %d\n", ping);
+                packet_read_value(ping, &from_client, &head);
+                printf("INF / ping %u\n", ping);
                 
                 to_client.size = 0;
                 packet_server_ping(&to_client, ping);
@@ -645,6 +646,19 @@ int main(int argc, char **argv)
                 sha1_final(&conn.map.sha1);
                 
                 printf(" OK / all files were read successfuly.\n");
+                
+                to_client.size = 0;
+                packet_server_start_adv_ex3(&to_client, &conn.map);
+                if (!send_packet(client_fd, &to_client, "start adv ex3 auth check"))
+                    goto exit;
+            } break;
+            
+            // SID_STARTADVEX3
+            case 0x1c: {
+                unsigned int head = 0;
+                unsigned int status = 0;
+                packet_read_value(status, &from_client, &head);
+                printf("status is %u\n", status);
             } break;
             
             default: {
