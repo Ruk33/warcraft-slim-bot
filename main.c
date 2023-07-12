@@ -342,7 +342,7 @@ int main(int argc, char **argv)
                 
                 // enter chat
                 to_client.size = 0;
-                packet_server_sid_enter_chat(&to_client);
+                packet_server_sid_enter_chat(&to_client, &username);
                 if (!send_packet(client_fd, &to_client, "sid enter chat"))
                     goto exit;
                 

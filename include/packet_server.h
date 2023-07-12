@@ -14,8 +14,6 @@ void packet_server_account_logon(struct packet *dest, struct username *username)
 
 void packet_server_net_game_port(struct packet *dest);
 
-void packet_server_enter_chat(struct packet *dest);
-
 void packet_server_friend_list(struct packet *dest);
 
 void packet_server_clan_member_list(struct packet *dest);
@@ -39,6 +37,6 @@ void packet_server_sid_auth_account_logon_proof(struct packet *dest,
 
 void packet_server_sid_net_game_port(struct packet *dest, unsigned short port);
 
-void packet_server_sid_enter_chat(struct packet *dest);
+void packet_server_sid_enter_chat(struct packet *dest, struct username *username);
 
 void packet_server_sid_join_channel(struct packet *dest, struct channel *channel);

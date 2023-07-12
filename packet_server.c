@@ -24,40 +24,32 @@ static void packet_write_header(struct packet *dest, unsigned char packet_type)
 void packet_server_init(struct packet *dest)
 {
     assert(dest);
-    unsigned char sid_auth_info = 80; // was 81.
+    unsigned char sid_auth_info = 0x50;
     packet_write_header(dest, sid_auth_info);
     
-    unsigned char protocol_id[] = {0, 0, 0, 0};
-    unsigned char platform_id[] = {54, 56, 88, 73}; // "IX86"
-    // unsigned char product_id[] = {80, 88, 51, 87}; // "W3XP"
-    unsigned int product_id = 0x1E;
-    // unsigned char version_id[] = {27, 0, 0, 0};
-    // unsigned char language[] = {83, 85, 110, 101}; // "enUS"
-    unsigned char language[] = {0, 0, 0, 0};
-    unsigned char local_ip[] = {127, 0, 0, 1};
-    unsigned char time_zone_bias[] = {60, 0, 0, 0}; // 60 minutes (GMT +0100) but this is probably -0100
-    
-    packet_write_array(dest, protocol_id);
-    packet_write_array(dest, platform_id);
-    packet_write_ex(dest, product_id);
-    unsigned int version_id = 0x15;
-    packet_write_ex(dest, version_id);
-    // packet_write_array(dest, version_id);
-    packet_write_array(dest, language);
-    packet_write_array(dest, local_ip);
-    packet_write_array(dest, time_zone_bias);
-    
-    // int locale_id = 1031; // not sure, but let's see if it works with it.
-    int locale_id = 0;
-    packet_write_ex(dest, locale_id);
-    packet_write_ex(dest, locale_id);
-    
-    // char country_abbr[] = "DEU";
-    char country_abbr[] = "enUS";
-    packet_write_array(dest, country_abbr);
-    
+    // unsigned char protocol_id[] = {0, 0, 0, 0};
+    unsigned int protocol_id = 0;
+    unsigned char platform_code[] = "IX86"; // "IX86";
+    unsigned char product_code[] = "PX3W"; // "W3XP";
+    unsigned int version_byte = 0x15;
+    unsigned int language_code = 0;
+    unsigned int local_ip = 0;
+    int time_zone_bias = 0;
+    unsigned int mpq_locale_id = 0;
+    unsigned int user_language_id = 0;
+    char country_abbreviation[] = "USA";
     char country[] = "United States";
-    // char country[] = "Germany";
+    
+    packet_write_ex(dest, protocol_id);
+    packet_write(dest, platform_code, sizeof(platform_code) - 1);
+    packet_write(dest, product_code, sizeof(product_code) - 1);
+    packet_write_ex(dest, version_byte);
+    packet_write_ex(dest, language_code);
+    packet_write_ex(dest, local_ip);
+    packet_write_ex(dest, time_zone_bias);
+    packet_write_ex(dest, mpq_locale_id);
+    packet_write_ex(dest, user_language_id);
+    packet_write_array(dest, country_abbreviation);
     packet_write_array(dest, country);
     
     packet_write_size(dest);
@@ -66,7 +58,7 @@ void packet_server_init(struct packet *dest)
 void packet_server_ping(struct packet *dest, unsigned int ping)
 {
     assert(dest);
-    unsigned char packet_type = 37;
+    unsigned char packet_type = 0x25;
     packet_write_header(dest, packet_type);
     packet_write_ex(dest, ping);
     // unsigned char zero = 0;
@@ -74,40 +66,15 @@ void packet_server_ping(struct packet *dest, unsigned int ping)
     packet_write_size(dest);
 }
 
-void packet_server_account_logon(struct packet *dest, struct username *username)
-{
-    assert(dest);
-    
-    unsigned char sid_auth_account_logon = 83;
-    packet_write_header(dest, sid_auth_account_logon);
-    
-    char public_key[32] = {32, 0}; // todo: complete!
-    packet_write_array(dest, public_key);
-    
-    packet_write_array(dest, username->buf);
-    
-    packet_write_size(dest);
-}
-
 void packet_server_net_game_port(struct packet *dest)
 {
     assert(dest);
-    unsigned char net_game_port = 69;
+    unsigned char net_game_port = 0x45;
     packet_write_header(dest, net_game_port);
     
     unsigned short port = 6112;
     packet_write_ex(dest, port);
     
-    packet_write_size(dest);
-}
-
-void packet_server_enter_chat(struct packet *dest)
-{
-    assert(dest);
-    unsigned char enter_chat = 10;
-    packet_write_header(dest, enter_chat);
-    short empty = 0;
-    packet_write_ex(dest, empty);
     packet_write_size(dest);
 }
 
@@ -307,7 +274,7 @@ void packet_server_sid_auth_check(struct packet *dest,
     assert(key_info_roc);
     assert(key_info_tft);
     
-    unsigned char packet_type = 81;
+    unsigned char packet_type = 0x51;
     packet_write_header(dest, packet_type);
     
     packet_write_ex(dest, client_token);
@@ -324,6 +291,7 @@ void packet_server_sid_auth_check(struct packet *dest,
     packet_write_array(dest, key_info_tft->buf);
     packet_write_array(dest, exe_info->buf);
     
+    // todo: dont' hardcode.
     char owner[] = "ruke";
     packet_write_array(dest, owner);
     
@@ -340,7 +308,6 @@ void packet_server_sid_auth_account_logon(struct packet *dest,
     
     unsigned char packet_type = 0x53;
     packet_write_header(dest, packet_type);
-    
     packet_write_array(dest, public_key->buf);
     packet_write_string(dest, username->buf);
     packet_write_size(dest);
@@ -369,11 +336,15 @@ void packet_server_sid_net_game_port(struct packet *dest, unsigned short port)
     packet_write_size(dest);
 }
 
-void packet_server_sid_enter_chat(struct packet *dest)
+void packet_server_sid_enter_chat(struct packet *dest, struct username *username)
 {
     assert(dest);
+    assert(username);
     unsigned char packet_type = 0x0A;
     packet_write_header(dest, packet_type);
+    packet_write_string(dest, username->buf);
+    char stat_string = 0;
+    packet_write_ex(dest, stat_string);
     packet_write_size(dest);
 }
 
